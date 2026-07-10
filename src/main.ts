@@ -277,16 +277,15 @@ function updateGifInfo() {
   $("gifInfo").textContent = `Total frames: ${frames}. Higher FPS / size / quality = bigger file and slower export.`;
 }
 
-// Export GIF
+// Export GIF — re-enable button when worker posts back the blob
 $("exportGif").addEventListener("click", () => {
-  ($("exportGif") as HTMLButtonElement).disabled = true;
-  ($("exportGif") as HTMLButtonElement).textContent = "Exporting...";
-  editor.exportGif(state);
-  // Re-enable after a delay (worker will finish asynchronously)
-  setTimeout(() => {
-    ($("exportGif") as HTMLButtonElement).disabled = false;
-    ($("exportGif") as HTMLButtonElement).textContent = "Export as GIF";
-  }, 3000);
+  const btn = $("exportGif") as HTMLButtonElement;
+  btn.disabled = true;
+  btn.textContent = "Exporting...";
+  editor.exportGif(state, () => {
+    btn.disabled = false;
+    btn.textContent = "Export as GIF";
+  });
 });
 
 // History (undo/redo)

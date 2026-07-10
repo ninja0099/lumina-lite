@@ -28,8 +28,39 @@ export function setBgImage(dataUrl: string | null): void {
 function paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
   ctx.clearRect(0, 0, w, h);
 
-  // 1. Background
-  if (s.layers.background && !s.transparent) {
+  if (s.layers.background && bgImg && !s.transparent) {
+    // Draw bg image to offscreen, apply effects there, then composite onto main canvas.
+    const scale = Math.max(w / bgImg.width, h / bgImg.height);
+    const iw = bgImg.width * scale;
+    const ih = bgImg.height * scale;
+    const ox = (w - iw) / 2;
+    const oy = (h - ih) / 2;
+
+    // Capture a snapshot of the cleared canvas (transparent), draw bg image
+    const off = document.createElement("canvas");
+    off.width = w;
+    off.height = h;
+    const octx = off.getContext("2d")!;
+    octx.drawImage(bgImg, ox, oy, iw, ih);
+    // Apply effects to the offscreen canvas (won't touch main canvas)
+    if (s.bgBlur > 0 || s.bgChromatic > 0 || s.bgWaveAmount > 0) {
+      applyBackgroundEffects(octx, w, h, s.bgBlur, s.bgChromatic, s.bgWaveAmount, s.bgWaveFrequency);
+    }
+    ctx.drawImage(off, 0, 0);
+
+    // Gradient overlay on top of image
+    if (s.bgGradient) {
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      const g = ctx.createLinearGradient(0, 0, w, h);
+      g.addColorStop(0, s.bgColor);
+      g.addColorStop(1, s.bgColor2);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+  } else if (s.layers.background && !s.transparent) {
+    // No bg image — solid or gradient fill
     if (s.bgGradient) {
       const g = ctx.createLinearGradient(0, 0, w, h);
       g.addColorStop(0, s.bgColor);
@@ -39,15 +70,6 @@ function paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignSta
       ctx.fillStyle = s.bgColor;
     }
     ctx.fillRect(0, 0, w, h);
-  }
-
-  // 1b. Background image
-  if (s.layers.background && bgImg) {
-    const scale = Math.max(w / bgImg.width, h / bgImg.height);
-    const iw = bgImg.width * scale;
-    const ih = bgImg.height * scale;
-    ctx.drawImage(bgImg, (w - iw) / 2, (h - ih) / 2, iw, ih);
-    applyBackgroundEffects(ctx, w, h, s.bgBlur, s.bgChromatic, s.bgWaveAmount, s.bgWaveFrequency);
   }
 
   // 2. Pattern overlay
@@ -371,14 +393,14 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     a.click();
   }
 
-  function exportGif(state: DesignState): void {
+  function exportGif(state: DesignState, onComplete?: () => void): void {
     const dur = state.gifDuration;
     const fps = state.gifFps;
     const maxSz = state.gifMaxSize;
     const scale = maxSz / PW;
     const gw = Math.round(PW * scale);
     const gh = Math.round(PH * scale);
-    const frames = Math.round(dur * fps);
+    const frameCount = Math.round(dur * fps);
     const delay = 1000 / fps;
 
     const offscreen = document.createElement("canvas");
@@ -388,8 +410,8 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     octx.scale(scale, scale);
 
     const frameData: { data: Uint8ClampedArray; delay: number }[] = [];
-    for (let i = 0; i < frames; i++) {
-      const t = (i / frames) * dur * 1000;
+    for (let i = 0; i < frameCount; i++) {
+      const t = (i / frameCount) * dur * 1000;
       octx.clearRect(0, 0, gw, gh);
       renderFrame(octx, gw, gh, state, t);
       frameData.push({
@@ -410,6 +432,7 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
       a.download = "lumina-lite.gif";
       a.click();
       URL.revokeObjectURL(url);
+      onComplete?.();
     };
     worker.postMessage({
       frames: frameData,
@@ -419,5 +442,5 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     });
   }
 
-  return { scheduleDraw, exportPng, exportGif, resetAnimation };
+  return { scheduleDraw, exportPng, exportGif, resetAnimation } as const;
 }
