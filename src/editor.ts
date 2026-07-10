@@ -23,30 +23,26 @@ export function setBgImage(dataUrl: string | null): void {
   img.src = dataUrl;
 }
 
-function paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
+function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
   ctx.clearRect(0, 0, w, h);
 
   if (s.layers.background && bgImg && !s.transparent) {
-    // Draw bg image to offscreen, apply effects there, then composite onto main canvas.
     const scale = Math.max(w / bgImg.width, h / bgImg.height);
     const iw = bgImg.width * scale;
     const ih = bgImg.height * scale;
     const ox = (w - iw) / 2;
     const oy = (h - ih) / 2;
 
-    // Capture a snapshot of the cleared canvas (transparent), draw bg image
     const off = document.createElement("canvas");
     off.width = w;
     off.height = h;
     const octx = off.getContext("2d")!;
     octx.drawImage(bgImg, ox, oy, iw, ih);
-    // Apply effects to the offscreen canvas (won't touch main canvas)
     if (s.bgBlur > 0 || s.bgChromatic > 0 || s.bgWaveAmount > 0) {
       applyBackgroundEffects(octx, w, h, s.bgBlur, s.bgChromatic, s.bgWaveAmount, s.bgWaveFrequency);
     }
     ctx.drawImage(off, 0, 0);
 
-    // Gradient overlay on top of image
     if (s.bgGradient) {
       ctx.save();
       ctx.globalAlpha = 0.45;
@@ -58,7 +54,6 @@ function paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignSta
       ctx.restore();
     }
   } else if (s.layers.background && !s.transparent) {
-    // No bg image — solid or gradient fill
     if (s.bgGradient) {
       const g = ctx.createLinearGradient(0, 0, w, h);
       g.addColorStop(0, s.bgColor);
@@ -70,19 +65,17 @@ function paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignSta
     ctx.fillRect(0, 0, w, h);
   }
 
-  // 2. Pattern overlay
   if (s.layers.pattern && s.pattern !== "None") {
     drawPattern(ctx, w, h, s.pattern, s.patternColor);
   }
+}
 
-  // 3. Glass panel behind text
+function paintFg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
   if (s.layers.text && s.glassPanel) drawGlass(ctx, w, h);
 
-  // 4. Mask clips logo + text together
   ctx.save();
   if (s.mask !== "None") applyMask(ctx, w, h, s.mask);
 
-  // 5. Logo
   if (s.layers.logo && logoImg) {
     const lw = w * s.logoScale;
     const scale = lw / logoImg.width;
@@ -90,12 +83,10 @@ function paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignSta
     ctx.drawImage(logoImg, (w - lw) / 2, h * 0.12, lw, lh);
   }
 
-  // 6. Text
   if (s.layers.text) drawText(ctx, w, h, s);
 
   ctx.restore();
 
-  // 7. Border glow over everything (outside mask clip)
   if (s.borderGlow) {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
@@ -109,6 +100,12 @@ function paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignSta
     ctx.strokeRect(w * 0.01, h * 0.01, w * 0.98, h * 0.98);
     ctx.restore();
   }
+}
+
+function paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
+  ctx.clearRect(0, 0, w, h);
+  paintBg(ctx, w, h, s);
+  paintFg(ctx, w, h, s);
 }
 
 function drawGlass(ctx: CanvasRenderingContext2D, w: number, h: number): void {
@@ -214,7 +211,8 @@ function applyAnimation(
 
   if (!animStart) animStart = time;
   const t = Math.min((time - animStart) / 1000, 100);
-  const loop = t % 2; // 0→1→0 cycle for looping anims
+  const loopPeriod = s.gifDuration || 2;
+  const loop = t % loopPeriod;
 
   ctx.save();
   const cx = w / 2, cy = h / 2;
@@ -381,8 +379,20 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     state: DesignState,
     timeMs: number,
   ): void {
-    applyAnimation(target, w, h, state, timeMs);
-    paint(target, w, h, state);
+    if (state.animateBg && state.animation !== "None") {
+      const off = document.createElement("canvas");
+      off.width = w;
+      off.height = h;
+      const octx = off.getContext("2d")!;
+      applyAnimation(octx, w, h, state, timeMs);
+      paintBg(octx, w, h, state);
+      target.clearRect(0, 0, w, h);
+      target.drawImage(off, 0, 0);
+      paintFg(target, w, h, state);
+    } else {
+      applyAnimation(target, w, h, state, timeMs);
+      paint(target, w, h, state);
+    }
   }
 
   function exportPng(): void {
