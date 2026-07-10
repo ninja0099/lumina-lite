@@ -35,30 +35,23 @@ const binders: Binder[] = [
   { id: "lineHeight", apply: (s, v) => (s.lineHeight = Number(v)) },
   { id: "posX", apply: (s, v) => (s.posX = Number(v)) },
   { id: "posY", apply: (s, v) => (s.posY = Number(v)) },
-  { id: "align", apply: (s, v) => (s.align = v as Align) },
   { id: "textGradient", apply: (s, v) => (s.textGradient = Boolean(v)) },
   { id: "textColor", apply: (s, v) => (s.textColor = String(v)) },
-  { id: "textColor2", apply: (s, v) => (s.textColor2 = String(v)) },
   { id: "transparentText", apply: (s, v) => (s.transparentText = Boolean(v)) },
-  { id: "textShadow", apply: (s, v) => (s.textShadow = Boolean(v)) },
   { id: "shadowBlur", apply: (s, v) => (s.shadowBlur = Number(v)) },
   { id: "shadowOpacity", apply: (s, v) => (s.shadowOpacity = Number(v)) },
   { id: "textGlow", apply: (s, v) => (s.textGlow = Boolean(v)) },
   { id: "transparent", apply: (s, v) => (s.transparent = Boolean(v)) },
   { id: "bgGradient", apply: (s, v) => (s.bgGradient = Boolean(v)) },
   { id: "bgColor", apply: (s, v) => (s.bgColor = String(v)) },
-  { id: "bgColor2", apply: (s, v) => (s.bgColor2 = String(v)) },
   { id: "borderGlow", apply: (s, v) => (s.borderGlow = Boolean(v)) },
   { id: "glassPanel", apply: (s, v) => (s.glassPanel = Boolean(v)) },
   { id: "pattern", apply: (s, v) => (s.pattern = v as DesignState["pattern"]) },
-  { id: "patternColor", apply: (s, v) => (s.patternColor = String(v)) },
-  { id: "mask", apply: (s, v) => (s.mask = v as DesignState["mask"]) },
   { id: "logoScale", apply: (s, v) => (s.logoScale = Number(v)) },
   { id: "bgBlur", apply: (s, v) => (s.bgBlur = Number(v)) },
   { id: "bgChromatic", apply: (s, v) => (s.bgChromatic = Number(v)) },
   { id: "bgWaveAmount", apply: (s, v) => (s.bgWaveAmount = Number(v)) },
   { id: "bgWaveFrequency", apply: (s, v) => (s.bgWaveFrequency = Number(v)) },
-  { id: "animation", apply: (s, v) => (s.animation = String(v)) },
   { id: "animateBg", apply: (s, v) => (s.animateBg = Boolean(v)) },
   { id: "gifDuration", apply: (s, v) => { s.gifDuration = Number(v); updateGifInfo(); } },
   { id: "gifFps", apply: (s, v) => { s.gifFps = Number(v); updateGifInfo(); } },
@@ -122,7 +115,7 @@ for (const f of FONTS) {
 }
 fontSel.value = state.font;
 
-// Pattern + mask selects
+// Pattern dropdown
 const patternSel = $<HTMLSelectElement>("pattern");
 for (const p of PATTERNS) {
   const opt = document.createElement("option");
@@ -130,22 +123,95 @@ for (const p of PATTERNS) {
   opt.textContent = p;
   patternSel.appendChild(opt);
 }
-const maskSel = $<HTMLSelectElement>("mask");
+
+// Mask buttons
+const maskGroup = $("maskGroup");
 for (const m of MASKS) {
-  const opt = document.createElement("option");
-  opt.value = m;
-  opt.textContent = m;
-  maskSel.appendChild(opt);
+  const btn = document.createElement("button");
+  btn.className = "btn toggle" + (m === state.mask ? " active" : "");
+  btn.textContent = m;
+  btn.dataset.val = m;
+  btn.addEventListener("click", () => {
+    maskGroup.querySelectorAll(".btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.mask = m as DesignState["mask"];
+    pushHistory();
+    editor.scheduleDraw();
+  });
+  maskGroup.appendChild(btn);
 }
 
-// Animation select
-const animSel = $<HTMLSelectElement>("animation");
+// Animation buttons
+const animGroup = $("animGroup");
 for (const a of ANIMATIONS) {
-  const opt = document.createElement("option");
-  opt.value = a;
-  opt.textContent = a;
-  animSel.appendChild(opt);
+  const btn = document.createElement("button");
+  btn.className = "btn toggle" + (a === state.animation ? " active" : "");
+  btn.textContent = a;
+  btn.dataset.val = a;
+  btn.addEventListener("click", () => {
+    animGroup.querySelectorAll(".btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.animation = a;
+    pushHistory();
+    editor.scheduleDraw();
+  });
+  animGroup.appendChild(btn);
 }
+
+// Align buttons
+const alignGroup = $("alignGroup");
+alignGroup.querySelectorAll<HTMLButtonElement>(".btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    alignGroup.querySelectorAll(".btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.align = btn.dataset.val as Align;
+    pushHistory();
+    editor.scheduleDraw();
+  });
+});
+
+// Aspect ratio buttons
+const aspectBtns = document.querySelectorAll<HTMLButtonElement>(".aspect-btn");
+const ASPECTS: Record<string, { w: number; h: number }> = {
+  "16:9": { w: 1920, h: 1080 },
+  "1:1": { w: 1080, h: 1080 },
+  "9:16": { w: 1080, h: 1920 },
+  "2:3": { w: 1080, h: 1620 },
+};
+aspectBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    aspectBtns.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    const ratio = btn.dataset.ratio!;
+    const asp = ASPECTS[ratio];
+    $("exportW").textContent = String(asp.w);
+    $("exportH").textContent = String(asp.h);
+    $("aspectLabel").textContent = ratio;
+    editor.setAspectRatio(asp.w, asp.h);
+    pushHistory();
+    editor.scheduleDraw();
+  });
+});
+
+// Zoom controls
+const wrap = $("canvasWrap");
+const zoomLabel = $("zoomLabel");
+let zoomVal = 100;
+
+function setZoom(v: number) {
+  zoomVal = Math.max(50, Math.min(200, v));
+  wrap.style.transform = `scale(${zoomVal / 100})`;
+  zoomLabel.textContent = `${zoomVal}%`;
+  document.querySelectorAll<HTMLButtonElement>(".zoom-preset").forEach((b) => {
+    b.classList.toggle("active", Number(b.dataset.z) === zoomVal);
+  });
+}
+
+$("zoomIn").addEventListener("click", () => setZoom(zoomVal + 10));
+$("zoomOut").addEventListener("click", () => setZoom(zoomVal - 10));
+document.querySelectorAll<HTMLButtonElement>(".zoom-preset").forEach((btn) => {
+  btn.addEventListener("click", () => setZoom(Number(btn.dataset.z)));
+});
 
 // Presets
 const grid = $("presets");
@@ -188,11 +254,19 @@ function syncInputsFromState() {
   }
   fontSel.value = state.font;
   patternSel.value = state.pattern;
-  maskSel.value = state.mask;
-  animSel.value = state.animation;
   for (const [input, label] of labels) {
     $(label).textContent = $<HTMLInputElement>(input).value;
   }
+  // Sync button groups
+  alignGroup.querySelectorAll<HTMLButtonElement>(".btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.val === state.align);
+  });
+  maskGroup.querySelectorAll<HTMLButtonElement>(".btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.val === state.mask);
+  });
+  animGroup.querySelectorAll<HTMLButtonElement>(".btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.val === state.animation);
+  });
   for (const k of ["background", "pattern", "logo", "text"] as LayerKey[]) {
     ($(`layer${k[0].toUpperCase()}${k.slice(1)}`) as HTMLInputElement).checked = state.layers[k];
   }
@@ -278,8 +352,8 @@ function updateGifInfo() {
 }
 
 // Export GIF — re-enable button when worker posts back the blob
-$("exportGif").addEventListener("click", () => {
-  const btn = $("exportGif") as HTMLButtonElement;
+$("exportGifBtn").addEventListener("click", () => {
+  const btn = $("exportGifBtn") as HTMLButtonElement;
   btn.disabled = true;
   btn.textContent = "Exporting...";
   editor.exportGif(state, () => {
@@ -325,15 +399,6 @@ $("redo").addEventListener("click", () => {
   histIdx++;
   applyHistory(history[histIdx]);
   updateHistoryButtons();
-});
-
-// Zoom via CSS transform (GPU-composited, never re-rasterizes the canvas).
-const wrap = $("canvasWrap");
-const zoom = $<HTMLInputElement>("zoom");
-const zoomLabel = $("zoomLabel");
-zoom.addEventListener("input", () => {
-  wrap.style.transform = `scale(${Number(zoom.value) / 100})`;
-  zoomLabel.textContent = `${zoom.value}%`;
 });
 
 // Export

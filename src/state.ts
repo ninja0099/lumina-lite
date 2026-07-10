@@ -115,7 +115,7 @@ export const ANIMATIONS = [
 
 export function createDefaultState(): DesignState {
   return {
-    text: "Cosmic",
+    text: "Insert text",
     uppercase: false,
     italic: false,
     font: "Bebas Neue",

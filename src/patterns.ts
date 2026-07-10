@@ -3,13 +3,13 @@
 
 export const PATTERNS = [
   "None",
-  "Liquid Glass",
+  "Liquid Glass (Apple)",
   "Dots",
   "Grid",
   "Checker",
-  "Lines H",
-  "Lines V",
-  "Lines Diagonal",
+  "Lines — Horizontal",
+  "Lines — Vertical",
+  "Lines — Diagonal",
   "Crosshatch",
   "Hexagons",
   "Triangles",
@@ -17,7 +17,7 @@ export const PATTERNS = [
   "Circuit",
   "Stars",
   "Scanlines",
-  "Noise",
+  "Noise / Grain",
   "Vignette",
 ] as const;
 
@@ -71,7 +71,7 @@ export function drawPattern(
     return;
   }
 
-  if (name === "Noise") {
+  if (name === "Noise / Grain") {
     const tile = getNoiseTile();
     const pat = ctx.createPattern(tile, "repeat")!;
     ctx.fillStyle = pat;
@@ -85,7 +85,7 @@ export function drawPattern(
   ctx.lineWidth = Math.max(1, w / 900);
 
   switch (name) {
-    case "Liquid Glass": {
+    case "Liquid Glass (Apple)": {
       // Soft blurred blobs suggesting frosted glass.
       ctx.globalAlpha = 0.12;
       const blobs = 6;
@@ -139,15 +139,15 @@ export function drawPattern(
           if (((x / step + y / step) | 0) % 2 === 0) ctx.fillRect(x, y, step, step);
       break;
     }
-    case "Lines H":
+    case "Lines — Horizontal":
       ctx.globalAlpha = 0.3;
       lineRow(ctx, w, h);
       break;
-    case "Lines V":
+    case "Lines — Vertical":
       ctx.globalAlpha = 0.3;
       lineCol(ctx, w, h);
       break;
-    case "Lines Diagonal":
+    case "Lines — Diagonal":
       ctx.globalAlpha = 0.25;
       drawDiagonal(ctx, w, h);
       break;

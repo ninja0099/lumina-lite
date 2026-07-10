@@ -3,180 +3,255 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lumina Lite</title>
+    <title>Lumina — Generate covers images</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <header class="topbar">
-      <h1>Lumina<span>Lite</span></h1>
-      <div class="actions">
-        <span id="zoomLabel" class="zoom-label">100%</span>
+      <div class="topbar-left">
+        <h1>Lumina<span>.</span></h1>
+        <span class="tagline">GENERATE COVERS IMAGES</span>
+      </div>
+      <div class="topbar-center">
+        <div class="aspect-btns">
+          <button class="aspect-btn active" data-ratio="16:9">16:9</button>
+          <button class="aspect-btn" data-ratio="1:1">1:1</button>
+          <button class="aspect-btn" data-ratio="9:16">9:16</button>
+          <button class="aspect-btn" data-ratio="2:3">2:3</button>
+        </div>
+        <button id="themeBtn" class="theme-btn" title="Theme: Cosmic — click to change">COSMIC</button>
+      </div>
+      <div class="topbar-right">
         <button id="exportPng" class="btn primary">Export PNG</button>
+        <button id="exportGif" class="btn primary">GIF</button>
       </div>
     </header>
 
     <main class="layout">
       <section class="stage">
+        <div class="canvas-info">
+          <span id="exportW">1920</span> × <span id="exportH">1080</span> · <span id="aspectLabel">16:9</span>
+          <span class="muted">LIVE PREVIEW</span>
+        </div>
         <div class="canvas-wrap" id="canvasWrap">
           <canvas id="preview" width="960" height="540"></canvas>
         </div>
-        <div class="zoom-control">
-          <label>Zoom</label>
-          <input id="zoom" type="range" min="50" max="200" step="10" value="100" />
+        <div class="zoom-bar">
+          <span class="muted">ZOOM</span>
+          <button id="zoomOut" class="btn icon">−</button>
+          <span id="zoomLabel">100%</span>
+          <button id="zoomIn" class="btn icon">+</button>
+          <div class="zoom-presets">
+            <button class="zoom-preset" data-z="50">50%</button>
+            <button class="zoom-preset active" data-z="100">100%</button>
+            <button class="zoom-preset" data-z="150">150%</button>
+            <button class="zoom-preset" data-z="200">200%</button>
+          </div>
         </div>
       </section>
 
       <aside class="panel">
+        <!-- Presets -->
         <div class="group">
-          <h2>Presets</h2>
+          <h2>PRESETS (<span id="presetCount">20</span>)</h2>
           <div id="presets" class="preset-grid"></div>
-          <button id="reset" class="btn ghost">Reset</button>
+          <button id="reset" class="btn ghost">RESET</button>
         </div>
 
+        <!-- Typography -->
         <div class="group">
-          <h2>Typography</h2>
-          <label>Text<textarea id="text" rows="2" placeholder="Your title"></textarea></label>
-          <label class="row">
-            <input id="uppercase" type="checkbox" /> Uppercase
-            <input id="italic" type="checkbox" /> Italic
+          <h2>TYPOGRAPHY</h2>
+          <label>TEXT
+            <textarea id="text" rows="2" placeholder="Your title (use Enter for line breaks)"></textarea>
           </label>
-          <label>Font family
+          <label class="row">
+            <span>Uppercase</span>
+            <input id="uppercase" type="checkbox" />
+            <span>Italic</span>
+            <input id="italic" type="checkbox" />
+          </label>
+          <label>FONT FAMILY
             <select id="font"></select>
           </label>
-          <label>Font size <span class="val" id="fontSizeVal">220</span>px
-            <input id="fontSize" type="range" min="40" max="400" step="2" value="220" />
-          </label>
-          <label>Weight <span class="val" id="weightVal">700</span>
-            <input id="weight" type="range" min="100" max="900" step="100" value="700" />
-          </label>
-          <label>Letter spacing <span class="val" id="spacingVal">4</span>px
-            <input id="spacing" type="range" min="-10" max="40" step="1" value="4" />
-          </label>
-          <label>Line height <span class="val" id="lineHeightVal">1.2</span>
-            <input id="lineHeight" type="range" min="0.7" max="2" step="0.1" value="1.2" />
-          </label>
-          <label>Position X <span class="val" id="posXVal">50</span>%
-            <input id="posX" type="range" min="0" max="100" step="1" value="50" />
-          </label>
-          <label>Position Y <span class="val" id="posYVal">50</span>%
-            <input id="posY" type="range" min="0" max="100" step="1" value="50" />
-          </label>
-          <label>Align
-            <select id="align">
-              <option value="left">left</option>
-              <option value="center" selected>center</option>
-              <option value="right">right</option>
-            </select>
-          </label>
-          <label class="inline">Import font from device
+          <label class="inline">IMPORT FONT FROM DEVICE
             <input id="fontFile" type="file" accept=".ttf,.otf,.woff,.woff2" />
           </label>
+          <label>FONT SIZE <span class="val" id="fontSizeVal">220px</span>
+            <input id="fontSize" type="range" min="40" max="500" step="2" value="220" />
+          </label>
+          <label>WEIGHT <span class="val" id="weightVal">700</span>
+            <input id="weight" type="range" min="400" max="900" step="100" value="700" />
+          </label>
+          <label>LETTER SPACING <span class="val" id="spacingVal">4px</span>
+            <input id="spacing" type="range" min="-10" max="40" step="1" value="4" />
+          </label>
+          <label>LINE HEIGHT <span class="val" id="lineHeightVal">1.2</span>
+            <input id="lineHeight" type="range" min="0.6" max="3" step="0.1" value="1.2" />
+          </label>
+          <label>POSITION X <span class="val" id="posXVal">50%</span>
+            <input id="posX" type="range" min="0" max="100" step="1" value="50" />
+          </label>
+          <label>POSITION Y <span class="val" id="posYVal">50%</span>
+            <input id="posY" type="range" min="0" max="100" step="1" value="50" />
+          </label>
+          <label>ALIGN
+            <div class="btn-group" id="alignGroup">
+              <button class="btn toggle" data-val="left">LEFT</button>
+              <button class="btn toggle active" data-val="center">CENTER</button>
+              <button class="btn toggle" data-val="right">RIGHT</button>
+            </div>
+          </label>
         </div>
 
+        <!-- Text Color & Effects -->
         <div class="group">
-          <h2>Text color & effects</h2>
-          <label class="inline">Use gradient <input id="textGradient" type="checkbox" /></label>
-          <label>Color<input id="textColor" type="color" value="#ffffff" /></label>
-          <label>Gradient end<input id="textColor2" type="color" value="#9aa0ff" /></label>
-          <label class="inline">Transparent text (cutout) <input id="transparentText" type="checkbox" /></label>
-          <label class="inline">Shadow <input id="textShadow" type="checkbox" /></label>
-          <label>Shadow blur <span class="val" id="shadowBlurVal">40</span>px
+          <h2>TEXT COLOR & EFFECTS</h2>
+          <label class="inline">
+            <span>Use gradient</span>
+            <input id="textGradient" type="checkbox" />
+          </label>
+          <label>COLOR
+            <input id="textColor" type="color" value="#ffffff" />
+          </label>
+          <label class="inline">
+            <span>Transparent text (cutout)</span>
+            <input id="transparentText" type="checkbox" />
+          </label>
+          <h2>SHADOW</h2>
+          <label>SHADOW BLUR <span class="val" id="shadowBlurVal">40px</span>
             <input id="shadowBlur" type="range" min="0" max="120" step="1" value="40" />
           </label>
-          <label>Shadow opacity <span class="val" id="shadowOpacityVal">0.6</span>
+          <label>SHADOW OPACITY <span class="val" id="shadowOpacityVal">0.60</span>
             <input id="shadowOpacity" type="range" min="0" max="1" step="0.05" value="0.6" />
           </label>
-          <label class="inline">Glow <input id="textGlow" type="checkbox" /></label>
+          <h2>GLOW EFFECT</h2>
+          <label class="inline">
+            <span>Enable glow</span>
+            <input id="textGlow" type="checkbox" />
+          </label>
         </div>
 
+        <!-- Background -->
         <div class="group">
-          <h2>Background</h2>
-          <label class="inline">Transparent (PNG alpha) <input id="transparent" type="checkbox" /></label>
-          <label class="inline">Use gradient <input id="bgGradient" type="checkbox" checked /></label>
-          <label>Color<input id="bgColor" type="color" value="#0b0b12" /></label>
-          <label>Gradient end<input id="bgColor2" type="color" value="#1b1b3a" /></label>
-          <label>Background Image
+          <h2>BACKGROUND</h2>
+          <label class="inline">
+            <span>Transparent background (PNG alpha)</span>
+            <input id="transparent" type="checkbox" />
+          </label>
+          <label class="inline">
+            <span>Use gradient</span>
+            <input id="bgGradient" type="checkbox" checked />
+          </label>
+          <label>COLOR
+            <input id="bgColor" type="color" value="#0b0b12" />
+          </label>
+          <label>BACKGROUND IMAGE
             <input id="bgImageFile" type="file" accept="image/*" />
           </label>
-          <label>Background blur <span class="val" id="bgBlurVal">0</span>px
-            <input id="bgBlur" type="range" min="0" max="20" step="1" value="0" />
+          <h2>BACKGROUND EFFECTS</h2>
+          <label>GAUSSIAN BLUR <span class="val" id="bgBlurVal">0px</span>
+            <input id="bgBlur" type="range" min="0" max="50" step="1" value="0" />
           </label>
-          <label>Chromatic aberration <span class="val" id="bgChromaticVal">0</span>px
-            <input id="bgChromatic" type="range" min="0" max="20" step="1" value="0" />
+          <label>CHROMATIC ABERRATION <span class="val" id="bgChromaticVal">0px</span>
+            <input id="bgChromatic" type="range" min="0" max="30" step="1" value="0" />
           </label>
-          <label>Wave amount <span class="val" id="bgWaveAmountVal">0</span>px
-            <input id="bgWaveAmount" type="range" min="0" max="20" step="1" value="0" />
+          <label>WAVE AMOUNT <span class="val" id="bgWaveAmountVal">0px</span>
+            <input id="bgWaveAmount" type="range" min="0" max="30" step="1" value="0" />
           </label>
-          <label>Wave frequency <span class="val" id="bgWaveFrequencyVal">4</span>
-            <input id="bgWaveFrequency" type="range" min="1" max="10" step="1" value="4" />
+          <label>WAVE FREQUENCY <span class="val" id="bgWaveFrequencyVal">4</span>
+            <input id="bgWaveFrequency" type="range" min="1" max="12" step="1" value="4" />
           </label>
-          <label class="inline">Enable border glow <input id="borderGlow" type="checkbox" /></label>
-          <label class="inline">Enable glass panel <input id="glassPanel" type="checkbox" /></label>
-        </div>
-
-        <div class="group">
-          <h2>Pattern</h2>
-          <label>Pattern
-            <select id="pattern"></select>
-          </label>
-          <label>Color<input id="patternColor" type="color" value="#ffffff" /></label>
-        </div>
-
-        <div class="group">
-          <h2>Image mask</h2>
-          <label>Mask shape
-            <select id="mask"></select>
+          <h2>BORDER GLOW</h2>
+          <label class="inline">
+            <span>Enable border glow</span>
+            <input id="borderGlow" type="checkbox" />
           </label>
         </div>
 
+        <!-- Logo & Icons -->
         <div class="group">
-          <h2>Logo / icon</h2>
-          <label class="inline">Import logo / icon
+          <h2>LOGO & ICONS</h2>
+          <label class="inline">IMPORT LOGO / ICON
             <input id="logoFile" type="file" accept="image/*" />
           </label>
-          <label>Scale <span class="val" id="logoScaleVal">0.3</span>
+          <label>SCALE <span class="val" id="logoScaleVal">0.3</span>
             <input id="logoScale" type="range" min="0.05" max="0.9" step="0.05" value="0.3" />
           </label>
-          <button id="clearLogo" class="btn ghost">Remove logo</button>
+          <button id="clearLogo" class="btn ghost" style="display:none">REMOVE LOGO</button>
         </div>
 
+        <!-- Glass Overlay -->
         <div class="group">
-          <h2>Animation</h2>
-          <label>Animation Type
-            <select id="animation"></select>
+          <h2>GLASS OVERLAY</h2>
+          <label class="inline">
+            <span>Enable glass panel</span>
+            <input id="glassPanel" type="checkbox" />
           </label>
-          <label class="inline">Animate background too <input id="animateBg" type="checkbox" /></label>
         </div>
 
+        <!-- Overlay Pattern -->
         <div class="group">
-          <h2>GIF Output</h2>
-          <label>Duration <span class="val" id="gifDurationVal">1.2</span>s
-            <input id="gifDuration" type="range" min="0.5" max="5" step="0.1" value="1.2" />
+          <h2>OVERLAY PATTERN</h2>
+          <label>PATTERN
+            <select id="pattern"></select>
           </label>
-          <label>Frame Rate <span class="val" id="gifFpsVal">16</span> FPS
-            <input id="gifFps" type="range" min="8" max="30" step="1" value="16" />
+        </div>
+
+        <!-- Image Mask -->
+        <div class="group">
+          <h2>IMAGE MASK</h2>
+          <label>MASK SHAPE
+            <div class="btn-grid" id="maskGroup"></div>
           </label>
-          <label>Quality <span class="val" id="gifQualityVal">15</span>
+        </div>
+
+        <!-- Animation -->
+        <div class="group">
+          <h2>ANIMATION (GIF)</h2>
+          <label>ANIMATION TYPE
+            <div class="btn-grid" id="animGroup"></div>
+          </label>
+          <label class="inline">
+            <span>Animate background too</span>
+            <input id="animateBg" type="checkbox" />
+          </label>
+        </div>
+
+        <!-- GIF Output -->
+        <div class="group">
+          <h2>GIF OUTPUT</h2>
+          <label>DURATION <span class="val" id="gifDurationVal">1.2s</span>
+            <input id="gifDuration" type="range" min="0.3" max="6" step="0.1" value="1.2" />
+          </label>
+          <label>FRAME RATE (FPS) <span class="val" id="gifFpsVal">16</span>
+            <input id="gifFps" type="range" min="4" max="30" step="1" value="16" />
+          </label>
+          <label>QUALITY <span class="val" id="gifQualityVal">15 (lower = better)</span>
             <input id="gifQuality" type="range" min="1" max="30" step="1" value="15" />
           </label>
-          <label>Max Size <span class="val" id="gifMaxSizeVal">500</span>px
-            <input id="gifMaxSize" type="range" min="200" max="1000" step="50" value="500" />
+          <label>MAX SIZE <span class="val" id="gifMaxSizeVal">500px</span>
+            <input id="gifMaxSize" type="range" min="200" max="1200" step="50" value="500" />
           </label>
-          <label class="inline">Loop forever <input id="gifLoop" type="checkbox" checked /></label>
-          <p id="gifInfo" style="color:var(--muted);font-size:12px;margin:6px 0 0;">Total frames: 19</p>
-          <button id="exportGif" class="btn primary" style="width:100%;margin-top:8px;">Export as GIF</button>
+          <label class="inline">
+            <span>Loop forever</span>
+            <input id="gifLoop" type="checkbox" checked />
+          </label>
+          <p id="gifInfo" class="muted small">Total frames: 19. Higher FPS / size / quality = bigger file and slower export.</p>
+          <button id="exportGifBtn" class="btn primary full">Export as GIF</button>
         </div>
 
+        <!-- Layers -->
         <div class="group">
-          <h2>Layers</h2>
+          <h2>LAYERS</h2>
           <label class="inline"><input id="layerBackground" type="checkbox" checked /> Background</label>
           <label class="inline"><input id="layerPattern" type="checkbox" checked /> Pattern</label>
           <label class="inline"><input id="layerLogo" type="checkbox" checked /> Logo</label>
           <label class="inline"><input id="layerText" type="checkbox" checked /> Text</label>
         </div>
 
+        <!-- History -->
         <div class="group">
-          <h2>History</h2>
+          <h2>HISTORY</h2>
           <div class="row">
             <button id="undo" class="btn">Undo</button>
             <button id="redo" class="btn">Redo</button>
@@ -184,6 +259,10 @@
         </div>
       </aside>
     </main>
+
+    <footer class="footer">
+      © 2026 LUMINA · BY <a href="https://buycoffee.to/trk88pl" target="_blank">TRK88PL</a> v1.8.0
+    </footer>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

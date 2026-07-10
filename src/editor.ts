@@ -4,10 +4,8 @@ import { drawPattern } from "./patterns";
 import { applyMask } from "./masks";
 import { applyBackgroundEffects } from "./effects";
 
-const ASPECT_W = 16;
-const ASPECT_H = 9;
-export const EXPORT_W = 1920;
-const EXPORT_H = (EXPORT_W * ASPECT_H) / ASPECT_W;
+let exportW = 1920;
+let exportH = 1080;
 
 let logoImg: HTMLImageElement | null = null;
 export function setLogo(dataUrl: string | null): void {
@@ -139,7 +137,7 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
   if (!text) return;
   if (currentCharLimit !== undefined) text = text.slice(0, currentCharLimit);
 
-  const scale = w / EXPORT_W;
+  const scale = w / exportW;
   const px = s.fontSize * scale;
   const style = s.italic ? "italic" : "normal";
   ctx.font = `${style} ${s.weight} ${px}px "${s.font}", system-ui, sans-serif`;
@@ -347,10 +345,17 @@ function easeOut(t: number): number {
 
 export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignState) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-  const PW = 960;
-  const PH = (PW * ASPECT_H) / ASPECT_W;
-  canvas.width = PW;
-  canvas.height = PH;
+  let PW = 960;
+  let PH = 540;
+
+  function updateCanvasSize() {
+    const ratio = exportH / exportW;
+    PW = 960;
+    PH = Math.round(PW * ratio);
+    canvas.width = PW;
+    canvas.height = PH;
+  }
+  updateCanvasSize();
 
   let pending = false;
 
@@ -382,10 +387,10 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
 
   function exportPng(): void {
     const out = document.createElement("canvas");
-    out.width = EXPORT_W;
-    out.height = EXPORT_H;
+    out.width = exportW;
+    out.height = exportH;
     const octx = out.getContext("2d")!;
-    paint(octx, EXPORT_W, EXPORT_H, getState());
+    paint(octx, exportW, exportH, getState());
     const url = out.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
@@ -442,5 +447,15 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     });
   }
 
-  return { scheduleDraw, exportPng, exportGif, resetAnimation } as const;
+  return {
+    scheduleDraw,
+    exportPng,
+    exportGif,
+    resetAnimation,
+    setAspectRatio(w: number, h: number) {
+      exportW = w;
+      exportH = h;
+      updateCanvasSize();
+    },
+  };
 }
