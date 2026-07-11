@@ -1,11 +1,24 @@
 import type { DesignState } from "./state";
 
+// Mirrors exportW from editor.ts so text-derived vector effects (shadow/echo)
+// scale against the design width, not a hardcoded 1920.
+let designW = 1920;
+export function setDesignWidth(w: number): void {
+  designW = w;
+}
+
 export function applyBackgroundEffects(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   s: DesignState,
 ): void {
+  // Vector effects draw straight to the context — no pixel buffer needed,
+  // so they must run even when no pixel op is active.
+  if (s.bgLongShadow) drawLongShadow(ctx, w, h, s);
+  if (s.bgEcho > 0) drawEcho(ctx, w, h, s);
+  if (s.bgVignette > 0) drawVignette(ctx, w, h, s.bgVignette);
+
   const hasPixelOp =
     s.bgBlur > 0 ||
     s.bgChromatic > 0 ||
@@ -33,10 +46,6 @@ export function applyBackgroundEffects(
   if (s.duotoneIntensity > 0) duotone(img, s.bgDuotone, s.duotoneColorA, s.duotoneColorB, s.duotoneIntensity);
 
   ctx.putImageData(img, 0, 0);
-
-  if (s.bgVignette > 0) drawVignette(ctx, w, h, s.bgVignette);
-  if (s.bgLongShadow) drawLongShadow(ctx, w, h, s);
-  if (s.bgEcho > 0) drawEcho(ctx, w, h, s);
 }
 
 function boxBlur(img: ImageData, w: number, h: number, r: number): void {
@@ -63,7 +72,7 @@ function boxBlur(img: ImageData, w: number, h: number, r: number): void {
         b0 += src[ad + 2] - src[rm + 2]; a0 += src[ad + 3] - src[rm + 3];
       }
     }
-    const tmp = pass % 2 === 0 ? bufB : bufA;
+    const tmp = dst === bufA ? bufB : bufA;
     for (let x = 0; x < w; x++) {
       let r0 = 0, g0 = 0, b0 = 0, a0 = 0;
       for (let i = -r; i <= r; i++) {
@@ -285,7 +294,7 @@ function duotone(
 
 function drawLongShadow(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
   if (!s.text) return;
-  const scale = w / 1920;
+  const scale = w / designW;
   const px = s.fontSize * scale;
   const style = s.italic ? "italic" : "normal";
   ctx.save();
@@ -312,7 +321,7 @@ function drawLongShadow(ctx: CanvasRenderingContext2D, w: number, h: number, s: 
 
 function drawEcho(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
   if (!s.text || s.bgEcho <= 0) return;
-  const scale = w / 1920;
+  const scale = w / designW;
   const px = s.fontSize * scale;
   const style = s.italic ? "italic" : "normal";
   ctx.save();

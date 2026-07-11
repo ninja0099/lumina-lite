@@ -123,7 +123,7 @@ class NeuQuant {
   private readonly netsize = MAX_COLORS;
   private readonly initrad = MAX_COLORS >> 3;
   private readonly radiusbiasshift = 6;
-  private readonly gamma = 1024;
+  private readonly gammaFactor = 1024; // NeuQuant alpha-bias divisor
 
   constructor(pixels: Uint8ClampedArray, pixelCount: number, samplePixels: number) {
     for (let i = 0; i < this.netsize; i++) {
@@ -134,7 +134,7 @@ class NeuQuant {
     }
     this.fac = new Float64Array(256);
     for (let i = 0; i < 256; i++)
-      this.fac[i] = (Math.pow(i / 255, 2) * this.gamma) >> this.radiusbiasshift;
+      this.fac[i] = (Math.pow(i / 255, 2) * this.gammaFactor) >> this.radiusbiasshift;
     const step = Math.max(1, Math.floor((pixelCount * 3) / samplePixels / 4));
     let pos = 0;
     const sampleCount = Math.min(pixelCount, samplePixels);
@@ -158,9 +158,9 @@ class NeuQuant {
       const n = best + i;
       if (n < 0 || n >= this.netsize) continue;
       const f = this.fac[Math.abs(i)];
-      this.net[n * 3] += ((r - this.net[n * 3]) * f) >> this.gamma;
-      this.net[n * 3 + 1] += ((g - this.net[n * 3 + 1]) * f) >> this.gamma;
-      this.net[n * 3 + 2] += ((b - this.net[n * 3 + 2]) * f) >> this.gamma;
+      this.net[n * 3] += ((r - this.net[n * 3]) * f) >> this.radiusbiasshift;
+      this.net[n * 3 + 1] += ((g - this.net[n * 3 + 1]) * f) >> this.radiusbiasshift;
+      this.net[n * 3 + 2] += ((b - this.net[n * 3 + 2]) * f) >> this.radiusbiasshift;
     }
   }
 

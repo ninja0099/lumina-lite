@@ -2,7 +2,7 @@ import type { DesignState } from "./state";
 import { ensureFont } from "./fonts";
 import { drawPattern } from "./patterns";
 import { applyMask } from "./masks";
-import { applyBackgroundEffects } from "./effects";
+import { applyBackgroundEffects, setDesignWidth } from "./effects";
 
 let exportW = 1920;
 let exportH = 1080;
@@ -128,10 +128,22 @@ function paintFg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
   ctx.restore();
 }
 
-function paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
+function paint(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  s: DesignState,
+  time?: number,
+): void {
+  // Reset any leftover transform/state from the previous frame's animation
+  // so clearRect always covers the full canvas.
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, w, h);
+  ctx.save();
+  applyAnimation(ctx, w, h, s, time ?? performance.now());
   paintBg(ctx, w, h, s);
   paintFg(ctx, w, h, s);
+  ctx.restore();
 }
 
 function drawGlass(ctx: CanvasRenderingContext2D, w: number, h: number): void {
@@ -261,7 +273,6 @@ function applyAnimation(
   const loopPeriod = s.gifDuration || 2;
   const loop = t % loopPeriod;
 
-  ctx.save();
   const cx = w / 2, cy = h / 2;
 
   switch (anim) {
@@ -380,7 +391,6 @@ function applyAnimation(
       break;
     }
   }
-  ctx.restore();
 }
 
 function easeOut(t: number): number {
@@ -403,20 +413,47 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
   }
   updateCanvasSize();
 
-  let pending = false;
+  setDesignWidth(exportW);
 
-  function scheduleDraw() {
-    if (pending) return;
-    pending = true;
-    requestAnimationFrame(() => {
-      pending = false;
-      const state = getState();
-      applyAnimation(ctx, canvas.width, canvas.height, state, performance.now());
-      paint(ctx, canvas.width, canvas.height, state);
-      ensureFont(state.font).then(() => {
-        paint(ctx, canvas.width, canvas.height, getState());
+  // Render loop. A static edit calls scheduleDraw() to (re)start it;
+  // with an animation active the loop keeps running so motion plays in
+  // the preview. With "None" it renders one frame then idles until
+  // the next scheduleDraw().
+  let rafId = 0;
+  let lastAnim = "None";
+  const warmedFonts = new Set<string>();
+
+  function render(time: number): void {
+    const state = getState();
+    paint(ctx, canvas.width, canvas.height, state, time);
+    if (!warmedFonts.has(state.font)) {
+      warmedFonts.add(state.font);
+      ensureFont(state.font, state.weight).then(() => {
+        startLoop();
       });
-    });
+    }
+  }
+
+  function loop(time: number): void {
+    const state = getState();
+    if (state.animation !== lastAnim) {
+      if (state.animation !== "None") resetAnimation();
+      lastAnim = state.animation;
+    }
+    render(time);
+    if (state.animation !== "None") {
+      rafId = requestAnimationFrame(loop);
+    } else {
+      rafId = 0; // idle: stop; next scheduleDraw restarts
+    }
+  }
+
+  function startLoop(): void {
+    if (!rafId) rafId = requestAnimationFrame(loop);
+  }
+
+  function scheduleDraw(): void {
+    startLoop();
   }
 
   // Render a specific animation frame to a given canvas context (for GIF export).
@@ -438,8 +475,7 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
       target.drawImage(off, 0, 0);
       paintFg(target, w, h, state);
     } else {
-      applyAnimation(target, w, h, state, timeMs);
-      paint(target, w, h, state);
+      paint(target, w, h, state, timeMs);
     }
   }
 
@@ -457,12 +493,13 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
   }
 
   function exportGif(state: DesignState, onComplete?: () => void): void {
+    resetAnimation(); // start GIF frames at loop t=0
+    const baseTime = performance.now(); // anchor frame times to animStart clock
     const dur = state.gifDuration;
     const fps = state.gifFps;
     const maxSz = state.gifMaxSize;
-    const scale = maxSz / PW;
-    const gw = Math.round(PW * scale);
-    const gh = Math.round(PH * scale);
+    const gw = maxSz;
+    const gh = Math.round((PH * maxSz) / PW);
     const frameCount = Math.round(dur * fps);
     const delay = 1000 / fps;
 
@@ -470,11 +507,12 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     offscreen.width = gw;
     offscreen.height = gh;
     const octx = offscreen.getContext("2d", { willReadFrequently: true })!;
-    octx.scale(scale, scale);
+    // No octx.scale: draw functions already size content by w/exportW, and a
+    // transform here would corrupt clearRect/getImageData (both transform-aware).
 
     const frameData: { data: Uint8ClampedArray; delay: number }[] = [];
     for (let i = 0; i < frameCount; i++) {
-      const t = (i / frameCount) * dur * 1000;
+      const t = baseTime + (i / frameCount) * dur * 1000;
       octx.clearRect(0, 0, gw, gh);
       renderFrame(octx, gw, gh, state, t);
       frameData.push({
@@ -510,9 +548,13 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     exportPng,
     exportGif,
     resetAnimation,
+    getExportSize(): { w: number; h: number } {
+      return { w: exportW, h: exportH };
+    },
     setAspectRatio(w: number, h: number) {
       exportW = w;
       exportH = h;
+      setDesignWidth(w);
       updateCanvasSize();
     },
   };

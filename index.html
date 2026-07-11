@@ -19,11 +19,10 @@
           <button class="aspect-btn" data-ratio="9:16">9:16</button>
           <button class="aspect-btn" data-ratio="2:3">2:3</button>
         </div>
-        <button id="themeBtn" class="theme-btn" title="Theme: Cosmic — click to change">COSMIC</button>
       </div>
       <div class="topbar-right">
         <button id="exportPng" class="btn primary">Export PNG</button>
-        <button id="exportGif" class="btn primary">GIF</button>
+        <button id="exportGifTop" class="btn primary">GIF</button>
       </div>
     </header>
 
@@ -77,22 +76,58 @@
             <input id="fontFile" type="file" accept=".ttf,.otf,.woff,.woff2" />
           </label>
           <label>FONT SIZE <span class="val" id="fontSizeVal">220px</span>
-            <input id="fontSize" type="range" min="40" max="500" step="2" value="220" />
+            <input id="fontSize" type="range" min="40" max="500" step="1" value="220" />
+          </label>
+          <label class="inline">UNIT
+            <select id="fontSizeUnit">
+              <option value="px">px</option>
+              <option value="pct">% (of height)</option>
+            </select>
           </label>
           <label>WEIGHT <span class="val" id="weightVal">700</span>
-            <input id="weight" type="range" min="400" max="900" step="100" value="700" />
+            <div class="slider-row">
+              <input id="weight" type="range" min="400" max="900" step="100" value="700" />
+              <select id="weightUnit">
+                <option value="weight">wght</option>
+                <option value="px">px</option>
+              </select>
+            </div>
           </label>
           <label>LETTER SPACING <span class="val" id="spacingVal">4px</span>
-            <input id="spacing" type="range" min="-10" max="40" step="1" value="4" />
+            <div class="slider-row">
+              <input id="spacing" type="range" min="-10" max="40" step="1" value="4" />
+              <select id="letterSpacingUnit">
+                <option value="px">px</option>
+                <option value="pct">% (of height)</option>
+              </select>
+            </div>
           </label>
           <label>LINE HEIGHT <span class="val" id="lineHeightVal">1.2</span>
-            <input id="lineHeight" type="range" min="0.6" max="3" step="0.1" value="1.2" />
+            <div class="slider-row">
+              <input id="lineHeight" type="range" min="0.6" max="3" step="0.1" value="1.2" />
+              <select id="lineHeightUnit">
+                <option value="ratio">ratio</option>
+                <option value="px">px</option>
+              </select>
+            </div>
           </label>
           <label>POSITION X <span class="val" id="posXVal">50%</span>
-            <input id="posX" type="range" min="0" max="100" step="1" value="50" />
+            <div class="slider-row">
+              <input id="posX" type="range" min="0" max="100" step="1" value="50" />
+              <select id="posXUnit">
+                <option value="pct">% (of width)</option>
+                <option value="px">px</option>
+              </select>
+            </div>
           </label>
           <label>POSITION Y <span class="val" id="posYVal">50%</span>
-            <input id="posY" type="range" min="0" max="100" step="1" value="50" />
+            <div class="slider-row">
+              <input id="posY" type="range" min="0" max="100" step="1" value="50" />
+              <select id="posYUnit">
+                <option value="pct">% (of height)</option>
+                <option value="px">px</option>
+              </select>
+            </div>
           </label>
           <label>TEXT ROTATION <span class="val" id="textRotationVal">0°</span>
             <input id="textRotation" type="range" min="-90" max="90" step="1" value="0" />

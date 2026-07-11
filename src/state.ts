@@ -13,11 +13,17 @@ export interface DesignState {
   italic: boolean;
   font: string;
   fontSize: number;
+  fontSizeUnit: "px" | "pct";
   weight: number;
+  weightUnit: "weight" | "px";
   letterSpacing: number;
+  letterSpacingUnit: "px" | "pct";
   lineHeight: number;
+  lineHeightUnit: "ratio" | "px";
   posX: number;
+  posXUnit: "px" | "pct";
   posY: number;
+  posYUnit: "px" | "pct";
   textRotation: number;
   align: Align;
 
@@ -139,11 +145,17 @@ export function createDefaultState(): DesignState {
     italic: false,
     font: "Bebas Neue",
     fontSize: 220,
+    fontSizeUnit: "px",
     weight: 700,
+    weightUnit: "weight",
     letterSpacing: 4,
+    letterSpacingUnit: "px",
     lineHeight: 1.2,
+    lineHeightUnit: "ratio",
     posX: 50,
+    posXUnit: "pct",
     posY: 50,
+    posYUnit: "pct",
     textRotation: 0,
     align: "center",
 

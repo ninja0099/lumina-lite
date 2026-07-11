@@ -29,12 +29,6 @@ const binders: Binder[] = [
   { id: "uppercase", apply: (s, v) => (s.uppercase = Boolean(v)) },
   { id: "italic", apply: (s, v) => (s.italic = Boolean(v)) },
   { id: "font", apply: (s, v) => (s.font = String(v)) },
-  { id: "fontSize", apply: (s, v) => (s.fontSize = Number(v)) },
-  { id: "weight", apply: (s, v) => (s.weight = Number(v)) },
-  { id: "spacing", apply: (s, v) => (s.letterSpacing = Number(v)) },
-  { id: "lineHeight", apply: (s, v) => (s.lineHeight = Number(v)) },
-  { id: "posX", apply: (s, v) => (s.posX = Number(v)) },
-  { id: "posY", apply: (s, v) => (s.posY = Number(v)) },
   { id: "textRotation", apply: (s, v) => (s.textRotation = Number(v)) },
   { id: "textGradient", apply: (s, v) => (s.textGradient = Boolean(v)) },
   { id: "textColor", apply: (s, v) => (s.textColor = String(v)) },
@@ -93,29 +87,33 @@ function readValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElemen
 // Wire inputs -> state -> coalesced redraw.
 for (const b of binders) {
   const el = $<HTMLInputElement>(b.id);
-  const sync = () => {
+  const apply = () => {
     b.apply(state, readValue(el));
     if (state.activePreset !== null) {
       state.activePreset = null;
       syncPresetHighlight();
     }
+  };
+  const commit = () => {
+    apply();
     pushHistory();
     editor.scheduleDraw();
   };
-  // Continuous controls fire 'input'; checkbox/select fire 'change'. Binding
-  // both duplicates undo history, so pick the appropriate one per type.
-  const evt = el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input";
-  el.addEventListener(evt, sync);
+  // Ranges fire a burst of 'input' while dragging — redraw live but only
+  // commit one history entry when the drag ends ('change'). Checkboxes,
+  // selects, and text use 'change'/'input' (already discrete).
+  if (el.type === "range") {
+    el.addEventListener("input", apply);
+    el.addEventListener("input", editor.scheduleDraw);
+    el.addEventListener("change", commit);
+  } else {
+    const evt = el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(evt, commit);
+  }
 }
 
 // Live value labels
 const labels: [string, string][] = [
-  ["fontSize", "fontSizeVal"],
-  ["weight", "weightVal"],
-  ["spacing", "spacingVal"],
-  ["lineHeight", "lineHeightVal"],
-  ["posX", "posXVal"],
-  ["posY", "posYVal"],
   ["textRotation", "textRotationVal"],
   ["shadowBlur", "shadowBlurVal"],
   ["shadowOpacity", "shadowOpacityVal"],
@@ -143,6 +141,155 @@ for (const [input, label] of labels) {
   const el = $<HTMLInputElement>(input);
   const out = $(label);
   el.addEventListener("input", () => (out.textContent = el.value));
+}
+
+// Font size: stored as px internally (stable for presets/export). The
+// slider displays px or % of canvas height; switching only rescales the
+// mapping, the underlying px value is preserved so the visual never jumps.
+const PX_RANGE: [number, number] = [40, 500];
+const PCT_RANGE: [number, number] = [2, 60];
+const fontSizeEl = $<HTMLInputElement>("fontSize");
+const fontSizeUnitEl = $<HTMLSelectElement>("fontSizeUnit");
+const pxToPct = (px: number, h: number) => Math.round((px / h) * 100);
+const pctToPx = (pct: number, h: number) => Math.round((pct / 100) * h);
+
+function updateFontSizeLabel(): void {
+  const h = editor.getExportSize().h;
+  const disp = state.fontSizeUnit === "pct" ? pxToPct(state.fontSize, h) : state.fontSize;
+  $("fontSizeVal").textContent = `${disp}${state.fontSizeUnit}`;
+}
+
+function configureFontSizeSlider(): void {
+  const h = editor.getExportSize().h;
+  const [min, max] = state.fontSizeUnit === "pct" ? PCT_RANGE : PX_RANGE;
+  fontSizeEl.min = String(min);
+  fontSizeEl.max = String(max);
+  fontSizeEl.value = String(
+    state.fontSizeUnit === "pct" ? pxToPct(state.fontSize, h) : state.fontSize,
+  );
+  updateFontSizeLabel();
+}
+
+fontSizeEl.addEventListener("input", () => {
+  const h = editor.getExportSize().h;
+  const disp = Number(fontSizeEl.value);
+  state.fontSize = state.fontSizeUnit === "pct" ? pctToPx(disp, h) : disp;
+  updateFontSizeLabel();
+  editor.scheduleDraw();
+});
+fontSizeEl.addEventListener("change", () => pushHistory());
+
+fontSizeUnitEl.addEventListener("change", () => {
+  state.fontSizeUnit = fontSizeUnitEl.value as "px" | "pct";
+  configureFontSizeSlider();
+  editor.scheduleDraw();
+  pushHistory();
+});
+
+// --- Unit sliders (px / % switches) ---
+// Each slider stores its value in a "native" unit. The unit select toggles
+// between native and a single "alt" unit; the slider only converts across
+// that boundary. ref() is the quantity the alt unit is expressed against
+// (canvas height, canvas width, or font size, depending on the slider).
+type Unit = "weight" | "px" | "ratio" | "pct";
+type UnitSlider = {
+  id: string;
+  stateKey: string;
+  unitId: string;
+  nativeUnit: Unit;
+  nativeRange: [number, number];
+  nativeStep: number;
+  altUnit: Unit;
+  altRange: [number, number];
+  altStep: number;
+  ref: () => number;
+  toAlt: (native: number, ref: number) => number;
+  toNative: (alt: number, ref: number) => number;
+  fmt: (s: DesignState) => string;
+};
+
+const unitSliders: UnitSlider[] = [
+  {
+    id: "weight", stateKey: "weight", unitId: "weightUnit",
+    nativeUnit: "weight", nativeRange: [400, 900], nativeStep: 100,
+    altUnit: "px", altRange: [400, 900], altStep: 0.05,
+    ref: () => 0, toAlt: (w) => w, toNative: (px) => px,
+    fmt: (s) => `${s.weightUnit === "px" ? s.weight.toFixed(2) + "px" : Math.round(s.weight)}`,
+  },
+  {
+    id: "spacing", stateKey: "letterSpacing", unitId: "letterSpacingUnit",
+    nativeUnit: "px", nativeRange: [-10, 40], nativeStep: 0.05,
+    altUnit: "pct", altRange: [-2, 8], altStep: 0.1,
+    ref: () => editor.getExportSize().h,
+    toAlt: (px, h) => (px / h) * 100, toNative: (pct, h) => (pct / 100) * h,
+    fmt: (s) => s.letterSpacingUnit === "pct" ? `${(s.letterSpacing / editor.getExportSize().h * 100).toFixed(1)}%` : `${s.letterSpacing.toFixed(2)}px`,
+  },
+  {
+    id: "lineHeight", stateKey: "lineHeight", unitId: "lineHeightUnit",
+    nativeUnit: "ratio", nativeRange: [0.6, 3], nativeStep: 0.1,
+    altUnit: "px", altRange: [10, 400], altStep: 0.05,
+    ref: () => state.fontSize,
+    toAlt: (r, fs) => r * fs, toNative: (px, fs) => px / fs,
+    fmt: (s) => s.lineHeightUnit === "px" ? `${(s.lineHeight * state.fontSize).toFixed(2)}px` : s.lineHeight.toFixed(1),
+  },
+  {
+    id: "posX", stateKey: "posX", unitId: "posXUnit",
+    nativeUnit: "pct", nativeRange: [0, 100], nativeStep: 0.1,
+    altUnit: "px", altRange: [0, 1920], altStep: 0.05,
+    ref: () => editor.getExportSize().w,
+    toAlt: (pct, w) => (pct / 100) * w, toNative: (px, w) => (px / w) * 100,
+    fmt: (s) => s.posXUnit === "pct" ? `${Math.round(s.posX)}%` : `${(s.posX / 100 * editor.getExportSize().w).toFixed(2)}px`,
+  },
+  {
+    id: "posY", stateKey: "posY", unitId: "posYUnit",
+    nativeUnit: "pct", nativeRange: [0, 100], nativeStep: 0.1,
+    altUnit: "px", altRange: [0, 1080], altStep: 0.05,
+    ref: () => editor.getExportSize().h,
+    toAlt: (pct, h) => (pct / 100) * h, toNative: (px, h) => (px / h) * 100,
+    fmt: (s) => s.posYUnit === "pct" ? `${Math.round(s.posY)}%` : `${(s.posY / 100 * editor.getExportSize().h).toFixed(2)}px`,
+  },
+];
+
+function isNativeUnit(us: UnitSlider): boolean {
+  return (state as unknown as Record<string, string>)[us.unitId] === us.nativeUnit;
+}
+
+function configureUnitSlider(us: UnitSlider): void {
+  const el = $<HTMLInputElement>(us.id);
+  const native = isNativeUnit(us);
+  const [min, max] = native ? us.nativeRange : us.altRange;
+  el.min = String(min);
+  el.max = String(max);
+  el.step = String(native ? us.nativeStep : us.altStep);
+  const v = (state as unknown as Record<string, number>)[us.stateKey];
+  const ref = us.ref();
+  el.value = String(native ? v : us.toAlt(v, ref));
+  $(`${us.id}Val`).textContent = us.fmt(state);
+}
+
+function reconfigureAllUnitSliders(): void {
+  for (const us of unitSliders) configureUnitSlider(us);
+}
+
+for (const us of unitSliders) {
+  const el = $<HTMLInputElement>(us.id);
+  el.addEventListener("input", () => {
+    const native = isNativeUnit(us);
+    const disp = Number(el.value);
+    const ref = us.ref();
+    (state as unknown as Record<string, number>)[us.stateKey] =
+      native ? disp : us.toNative(disp, ref);
+    $(`${us.id}Val`).textContent = us.fmt(state);
+    editor.scheduleDraw();
+  });
+  el.addEventListener("change", () => pushHistory());
+  $<HTMLSelectElement>(us.unitId).addEventListener("change", () => {
+    (state as unknown as Record<string, string>)[us.unitId] =
+      $<HTMLSelectElement>(us.unitId).value;
+    configureUnitSlider(us);
+    editor.scheduleDraw();
+    pushHistory();
+  });
 }
 
 // Angle labels append the degree symbol
@@ -235,6 +382,8 @@ aspectBtns.forEach((btn) => {
     $("exportH").textContent = String(asp.h);
     $("aspectLabel").textContent = ratio;
     editor.setAspectRatio(asp.w, asp.h);
+    if (state.fontSizeUnit === "pct") configureFontSizeSlider();
+    reconfigureAllUnitSliders();
     pushHistory();
     editor.scheduleDraw();
   });
@@ -301,6 +450,12 @@ function syncInputsFromState() {
   }
   fontSel.value = state.font;
   patternSel.value = state.pattern;
+  fontSizeUnitEl.value = state.fontSizeUnit;
+  configureFontSizeSlider();
+  for (const us of unitSliders) {
+    $<HTMLSelectElement>(us.unitId).value = (state as unknown as Record<string, string>)[us.unitId];
+  }
+  reconfigureAllUnitSliders();
   for (const [input, label] of labels) {
     $(label).textContent = $<HTMLInputElement>(input).value;
   }
@@ -351,6 +506,8 @@ $<HTMLInputElement>("fontFile").addEventListener("change", (e) => {
       state.font = name;
       pushHistory();
       editor.scheduleDraw();
+    }).catch(() => {
+      alert("Could not load that font file.");
     });
   };
   reader.readAsArrayBuffer(file);
@@ -402,15 +559,17 @@ function updateGifInfo() {
 }
 
 // Export GIF — re-enable button when worker posts back the blob
-$("exportGifBtn").addEventListener("click", () => {
-  const btn = $("exportGifBtn") as HTMLButtonElement;
+function runExportGif(btn: HTMLButtonElement): void {
   btn.disabled = true;
+  const label = btn.textContent;
   btn.textContent = "Exporting...";
   editor.exportGif(state, () => {
     btn.disabled = false;
-    btn.textContent = "Export as GIF";
+    btn.textContent = label;
   });
-});
+}
+$("exportGifBtn").addEventListener("click", () => runExportGif($("exportGifBtn") as HTMLButtonElement));
+$("exportGifTop").addEventListener("click", () => runExportGif($("exportGifTop") as HTMLButtonElement));
 
 // History (undo/redo)
 const history: DesignState[] = [structuredClone(state)];
@@ -461,5 +620,6 @@ $("exportPng").addEventListener("click", () => editor.exportPng());
 
 // Initial render
 syncInputsFromState();
+updateGifInfo();
 updateHistoryButtons();
 editor.scheduleDraw();

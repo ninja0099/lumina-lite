@@ -141,6 +141,15 @@ label {
 }
 label.inline { display: flex; align-items: center; gap: 8px; }
 label.row { display: flex; align-items: center; gap: 14px; }
+.slider-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.slider-row input[type=range] { flex: 1; }
+.slider-row select {
+  width: auto;
+  margin-top: 0;
+  flex: 0 0 auto;
+  padding: 6px 6px;
+  font-size: 12px;
+}
 .val { color: var(--accent); font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; margin: 6px 0 0; }
