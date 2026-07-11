@@ -38,16 +38,20 @@ const binders: Binder[] = [
   { id: "textRotation", apply: (s, v) => (s.textRotation = Number(v)) },
   { id: "textGradient", apply: (s, v) => (s.textGradient = Boolean(v)) },
   { id: "textColor", apply: (s, v) => (s.textColor = String(v)) },
+  { id: "textColor2", apply: (s, v) => (s.textColor2 = String(v)) },
   { id: "transparentText", apply: (s, v) => (s.transparentText = Boolean(v)) },
+  { id: "textShadow", apply: (s, v) => (s.textShadow = Boolean(v)) },
   { id: "shadowBlur", apply: (s, v) => (s.shadowBlur = Number(v)) },
   { id: "shadowOpacity", apply: (s, v) => (s.shadowOpacity = Number(v)) },
   { id: "textGlow", apply: (s, v) => (s.textGlow = Boolean(v)) },
   { id: "transparent", apply: (s, v) => (s.transparent = Boolean(v)) },
   { id: "bgGradient", apply: (s, v) => (s.bgGradient = Boolean(v)) },
   { id: "bgColor", apply: (s, v) => (s.bgColor = String(v)) },
+  { id: "bgColor2", apply: (s, v) => (s.bgColor2 = String(v)) },
   { id: "borderGlow", apply: (s, v) => (s.borderGlow = Boolean(v)) },
   { id: "glassPanel", apply: (s, v) => (s.glassPanel = Boolean(v)) },
   { id: "pattern", apply: (s, v) => (s.pattern = v as DesignState["pattern"]) },
+  { id: "patternColor", apply: (s, v) => (s.patternColor = String(v)) },
   { id: "logoScale", apply: (s, v) => (s.logoScale = Number(v)) },
   { id: "bgBlur", apply: (s, v) => (s.bgBlur = Number(v)) },
   { id: "bgChromatic", apply: (s, v) => (s.bgChromatic = Number(v)) },
@@ -61,6 +65,10 @@ const binders: Binder[] = [
   { id: "bgBloom", apply: (s, v) => (s.bgBloom = Number(v)) },
   { id: "bgLongShadow", apply: (s, v) => (s.bgLongShadow = Boolean(v)) },
   { id: "bgEcho", apply: (s, v) => (s.bgEcho = Number(v)) },
+  { id: "bgDuotone", apply: (s, v) => (s.bgDuotone = Number(v)) },
+  { id: "duotoneColorA", apply: (s, v) => (s.duotoneColorA = String(v)) },
+  { id: "duotoneColorB", apply: (s, v) => (s.duotoneColorB = String(v)) },
+  { id: "duotoneIntensity", apply: (s, v) => (s.duotoneIntensity = Number(v)) },
   { id: "animateBg", apply: (s, v) => (s.animateBg = Boolean(v)) },
   { id: "gifDuration", apply: (s, v) => { s.gifDuration = Number(v); updateGifInfo(); } },
   { id: "gifFps", apply: (s, v) => { s.gifFps = Number(v); updateGifInfo(); } },
@@ -81,11 +89,17 @@ for (const b of binders) {
   const el = $<HTMLInputElement>(b.id);
   const sync = () => {
     b.apply(state, readValue(el));
+    if (state.activePreset !== null) {
+      state.activePreset = null;
+      syncPresetHighlight();
+    }
     pushHistory();
     editor.scheduleDraw();
   };
-  el.addEventListener("input", sync);
-  el.addEventListener("change", sync);
+  // Continuous controls fire 'input'; checkbox/select fire 'change'. Binding
+  // both duplicates undo history, so pick the appropriate one per type.
+  const evt = el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input";
+  el.addEventListener(evt, sync);
 }
 
 // Live value labels
@@ -109,6 +123,7 @@ const labels: [string, string][] = [
   ["bgVignette", "bgVignetteVal"],
   ["bgBloom", "bgBloomVal"],
   ["bgEcho", "bgEchoVal"],
+  ["duotoneIntensity", "duotoneIntensityVal"],
   ["gifDuration", "gifDurationVal"],
   ["gifFps", "gifFpsVal"],
   ["gifQuality", "gifQualityVal"],
@@ -396,6 +411,11 @@ function applyHistory(snap: DesignState) {
   syncInputsFromState();
   suspend = false;
   editor.scheduleDraw();
+  syncPresetHighlight();
+}
+
+function syncPresetHighlight() {
+  presetEls.forEach((e, name) => e.classList.toggle("active", state.activePreset === name));
 }
 
 function updateHistoryButtons() {

@@ -113,14 +113,21 @@
             <span>Use gradient</span>
             <input id="textGradient" type="checkbox" />
           </label>
-          <label>COLOR
+          <label class="inline">COLOR A
             <input id="textColor" type="color" value="#ffffff" />
+          </label>
+          <label class="inline">COLOR B
+            <input id="textColor2" type="color" value="#9aa0ff" />
           </label>
           <label class="inline">
             <span>Transparent text (cutout)</span>
             <input id="transparentText" type="checkbox" />
           </label>
           <h2>SHADOW</h2>
+          <label class="inline">
+            <span>Enable shadow</span>
+            <input id="textShadow" type="checkbox" />
+          </label>
           <label>SHADOW BLUR <span class="val" id="shadowBlurVal">40px</span>
             <input id="shadowBlur" type="range" min="0" max="120" step="1" value="40" />
           </label>
@@ -145,8 +152,11 @@
             <span>Use gradient</span>
             <input id="bgGradient" type="checkbox" checked />
           </label>
-          <label>COLOR
+          <label class="inline">COLOR A
             <input id="bgColor" type="color" value="#0b0b12" />
+          </label>
+          <label class="inline">COLOR B
+            <input id="bgColor2" type="color" value="#1b1b3a" />
           </label>
           <label>BACKGROUND IMAGE
             <input id="bgImageFile" type="file" accept="image/*" />
@@ -180,6 +190,21 @@
           <label class="inline">
             <span>Pixelate / mosaic</span>
             <input id="bgPixelate" type="checkbox" />
+          </label>
+          <label class="inline">DUOTONE / GRADIENT MAP <span class="val" id="duotoneIntensityVal">0%</span>
+            <input id="duotoneIntensity" type="range" min="0" max="100" step="1" value="0" />
+          </label>
+          <label class="inline">DUOTONE SHADOW
+            <input id="duotoneColorA" type="color" value="#0b0b12" />
+          </label>
+          <label class="inline">DUOTONE HIGHLIGHT
+            <input id="duotoneColorB" type="color" value="#9aa0ff" />
+          </label>
+          <label class="inline">DUOTONE MODE
+            <select id="bgDuotone">
+              <option value="0">Gradient map (smooth)</option>
+              <option value="1">Twin (2-tone)</option>
+            </select>
           </label>
           <label>BLOOM / GLOW <span class="val" id="bgBloomVal">0%</span>
             <input id="bgBloom" type="range" min="0" max="100" step="1" value="0" />
@@ -224,6 +249,9 @@
           <h2>OVERLAY PATTERN</h2>
           <label>PATTERN
             <select id="pattern"></select>
+          </label>
+          <label class="inline">PATTERN COLOR
+            <input id="patternColor" type="color" value="#ffffff" />
           </label>
         </div>
 

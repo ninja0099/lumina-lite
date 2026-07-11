@@ -15,7 +15,8 @@ export function applyBackgroundEffects(
     s.bgVignette > 0 ||
     s.bgBloom > 0 ||
     s.bgHalftone ||
-    s.bgPixelate;
+    s.bgPixelate ||
+    s.duotoneIntensity > 0;
 
   if (!hasPixelOp) return;
 
@@ -24,11 +25,12 @@ export function applyBackgroundEffects(
   if (s.bgWaveAmount > 0) waveDistort(img, w, h, s.bgWaveAmount, s.bgWaveFrequency);
   if (s.bgChromatic > 0) chromaticAberration(img, w, h, s.bgChromatic);
   if (s.bgGlitch > 0) glitch(img, w, h, s.bgGlitch);
-  if (s.bgFilmGrain > 0) filmGrain(img, w, h, s.bgFilmGrain);
+  if (s.bgFilmGrain > 0) filmGrain(img, s.bgFilmGrain);
   if (s.bgBloom > 0) bloom(img, w, h, s.bgBloom);
-  if (s.bgHalftone) halftone(ctx, img, w, h);
+  if (s.bgHalftone) halftone(img, w, h);
   if (s.bgPixelate) pixelate(img, w, h);
   if (s.bgBlur > 0) boxBlur(img, w, h, s.bgBlur);
+  if (s.duotoneIntensity > 0) duotone(img, s.bgDuotone, s.duotoneColorA, s.duotoneColorB, s.duotoneIntensity);
 
   ctx.putImageData(img, 0, 0);
 
@@ -39,11 +41,13 @@ export function applyBackgroundEffects(
 
 function boxBlur(img: ImageData, w: number, h: number, r: number): void {
   const d = img.data;
-  const out = new Uint8ClampedArray(d.length);
-  const size = r * 2 + 1;
+  const bufA = new Uint8ClampedArray(d.length);
+  const bufB = new Uint8ClampedArray(d.length);
+  let src = d;
+  let dst = bufA;
+
   for (let pass = 0; pass < 3; pass++) {
-    const src = pass === 0 ? d : out;
-    const dst = pass === 0 ? out : pass === 1 ? d : out;
+    const size = r * 2 + 1;
     for (let y = 0; y < h; y++) {
       let r0 = 0, g0 = 0, b0 = 0, a0 = 0;
       for (let i = -r; i <= r; i++) {
@@ -59,7 +63,7 @@ function boxBlur(img: ImageData, w: number, h: number, r: number): void {
         b0 += src[ad + 2] - src[rm + 2]; a0 += src[ad + 3] - src[rm + 3];
       }
     }
-    const tmp = new Uint8ClampedArray(dst.length);
+    const tmp = pass % 2 === 0 ? bufB : bufA;
     for (let x = 0; x < w; x++) {
       let r0 = 0, g0 = 0, b0 = 0, a0 = 0;
       for (let i = -r; i <= r; i++) {
@@ -75,13 +79,10 @@ function boxBlur(img: ImageData, w: number, h: number, r: number): void {
         b0 += dst[ad + 2] - dst[rm + 2]; a0 += dst[ad + 3] - dst[rm + 3];
       }
     }
-    if (pass < 2) {
-      for (let i = 0; i < tmp.length; i++) (pass === 0 ? out : d)[i] = tmp[i];
-    } else {
-      for (let i = 0; i < tmp.length; i++) out[i] = tmp[i];
-    }
+    src = tmp;
+    dst = src === bufA ? bufB : bufA;
   }
-  for (let i = 0; i < d.length; i++) d[i] = out[i];
+  for (let i = 0; i < d.length; i++) d[i] = src[i];
 }
 
 function chromaticAberration(img: ImageData, w: number, h: number, amount: number): void {
@@ -152,7 +153,7 @@ function glitch(img: ImageData, w: number, h: number, amount: number): void {
   }
 }
 
-function filmGrain(img: ImageData, w: number, h: number, amount: number): void {
+function filmGrain(img: ImageData, amount: number): void {
   const d = img.data;
   const a = amount / 100;
   for (let i = 0; i < d.length; i += 4) {
@@ -198,18 +199,9 @@ function bloom(img: ImageData, w: number, h: number, amount: number): void {
   }
 }
 
-function halftone(target: CanvasRenderingContext2D, img: ImageData, w: number, h: number): void {
+function halftone(img: ImageData, w: number, h: number): void {
   const d = img.data;
   const step = Math.max(6, Math.floor(w / 80));
-  for (let y = 0; y < h; y += step) {
-    for (let x = 0; x < w; x += step) {
-      const p = (y * w + x) * 4;
-      const lum = (d[p] + d[p + 1] + d[p + 2]) / 3;
-      const r = (1 - lum / 255) * step * 0.5;
-      const i = (y * w + x) * 4;
-      d[i] = d[i + 1] = d[i + 2] = lum;
-    }
-  }
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const gx = Math.floor(x / step) * step;
@@ -257,6 +249,38 @@ function drawVignette(ctx: CanvasRenderingContext2D, w: number, h: number, amoun
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
+}
+
+function duotone(
+  img: ImageData,
+  mode: number, colA: string, colB: string, intensity: number,
+): void {
+  if (intensity <= 0) return;
+  const d = img.data;
+  const a = intensity / 100;
+  const ar = parseInt(colA.slice(1, 3), 16);
+  const ag = parseInt(colA.slice(3, 5), 16);
+  const ab = parseInt(colA.slice(5, 7), 16);
+  const br = parseInt(colB.slice(1, 3), 16);
+  const bg = parseInt(colB.slice(3, 5), 16);
+  const bb = parseInt(colB.slice(5, 7), 16);
+  const twin = mode === 1;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    let dr = ar + (br - ar) * lum;
+    let dg = ag + (bg - ag) * lum;
+    let db = ab + (bb - ab) * lum;
+    if (twin) {
+      const dl = lum < 0.5 ? 0 : 1;
+      dr = ar + (br - ar) * dl;
+      dg = ag + (bg - ag) * dl;
+      db = ab + (bb - ab) * dl;
+    }
+    d[i]     = Math.round(r * (1 - a) + dr * a);
+    d[i + 1] = Math.round(g * (1 - a) + dg * a);
+    d[i + 2] = Math.round(b * (1 - a) + db * a);
+  }
 }
 
 function drawLongShadow(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {

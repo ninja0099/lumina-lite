@@ -38,7 +38,7 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     off.height = h;
     const octx = off.getContext("2d")!;
     octx.drawImage(bgImg, ox, oy, iw, ih);
-    if (s.bgBlur > 0 || s.bgChromatic > 0 || s.bgWaveAmount > 0 || s.bgGlitch > 0 || s.bgFilmGrain > 0 || s.bgVignette > 0 || s.bgBloom > 0 || s.bgHalftone || s.bgPixelate || s.bgLongShadow || s.bgEcho > 0) {
+    if (s.bgBlur > 0 || s.bgChromatic > 0 || s.bgWaveAmount > 0 || s.bgGlitch > 0 || s.bgFilmGrain > 0 || s.bgVignette > 0 || s.bgBloom > 0 || s.bgHalftone || s.bgPixelate || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
       applyBackgroundEffects(octx, w, h, s);
     }
     ctx.drawImage(off, 0, 0);
@@ -63,7 +63,7 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
       ctx.fillStyle = s.bgColor;
     }
     ctx.fillRect(0, 0, w, h);
-    if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0) {
+    if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
       applyBackgroundEffects(ctx, w, h, s);
     }
   }
@@ -88,8 +88,6 @@ function paintFg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
 
   if (s.layers.text) drawText(ctx, w, h, s);
 
-  ctx.restore();
-
   if (s.borderGlow) {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
@@ -103,6 +101,8 @@ function paintFg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     ctx.strokeRect(w * 0.01, h * 0.01, w * 0.98, h * 0.98);
     ctx.restore();
   }
+
+  ctx.restore();
 }
 
 function paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
@@ -345,6 +345,7 @@ function applyAnimation(
       break;
     }
   }
+  ctx.restore();
 }
 
 function easeOut(t: number): number {

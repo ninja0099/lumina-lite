@@ -53,6 +53,10 @@ export interface DesignState {
   bgBloom: number;
   bgLongShadow: boolean;
   bgEcho: number;
+  bgDuotone: number;
+  duotoneColorA: string;
+  duotoneColorB: string;
+  duotoneIntensity: number;
 
   mask: MaskName;
   logoDataUrl: string | null;
@@ -173,6 +177,10 @@ export function createDefaultState(): DesignState {
     bgBloom: 0,
     bgLongShadow: false,
     bgEcho: 0,
+    bgDuotone: 0,
+    duotoneColorA: "#0b0b12",
+    duotoneColorB: "#9aa0ff",
+    duotoneIntensity: 0,
 
     animation: "None",
     animateBg: false,
