@@ -18,6 +18,7 @@ export interface DesignState {
   lineHeight: number;
   posX: number;
   posY: number;
+  textRotation: number;
   align: Align;
 
   textGradient: boolean;
@@ -44,6 +45,14 @@ export interface DesignState {
   bgChromatic: number;
   bgWaveAmount: number;
   bgWaveFrequency: number;
+  bgGlitch: number;
+  bgFilmGrain: number;
+  bgHalftone: boolean;
+  bgVignette: number;
+  bgPixelate: boolean;
+  bgBloom: number;
+  bgLongShadow: boolean;
+  bgEcho: number;
 
   mask: MaskName;
   logoDataUrl: string | null;
@@ -125,6 +134,7 @@ export function createDefaultState(): DesignState {
     lineHeight: 1.2,
     posX: 50,
     posY: 50,
+    textRotation: 0,
     align: "center",
 
     textGradient: false,
@@ -155,6 +165,14 @@ export function createDefaultState(): DesignState {
     bgChromatic: 0,
     bgWaveAmount: 0,
     bgWaveFrequency: 4,
+    bgGlitch: 0,
+    bgFilmGrain: 0,
+    bgHalftone: false,
+    bgVignette: 0,
+    bgPixelate: false,
+    bgBloom: 0,
+    bgLongShadow: false,
+    bgEcho: 0,
 
     animation: "None",
     animateBg: false,

@@ -38,8 +38,8 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     off.height = h;
     const octx = off.getContext("2d")!;
     octx.drawImage(bgImg, ox, oy, iw, ih);
-    if (s.bgBlur > 0 || s.bgChromatic > 0 || s.bgWaveAmount > 0) {
-      applyBackgroundEffects(octx, w, h, s.bgBlur, s.bgChromatic, s.bgWaveAmount, s.bgWaveFrequency);
+    if (s.bgBlur > 0 || s.bgChromatic > 0 || s.bgWaveAmount > 0 || s.bgGlitch > 0 || s.bgFilmGrain > 0 || s.bgVignette > 0 || s.bgBloom > 0 || s.bgHalftone || s.bgPixelate || s.bgLongShadow || s.bgEcho > 0) {
+      applyBackgroundEffects(octx, w, h, s);
     }
     ctx.drawImage(off, 0, 0);
 
@@ -63,6 +63,9 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
       ctx.fillStyle = s.bgColor;
     }
     ctx.fillRect(0, 0, w, h);
+    if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0) {
+      applyBackgroundEffects(ctx, w, h, s);
+    }
   }
 
   if (s.layers.pattern && s.pattern !== "None") {
@@ -157,6 +160,14 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
   const lines = text.split("\n");
   const lh = px * s.lineHeight;
 
+  const rot = (s.textRotation * Math.PI) / 180;
+  if (rot !== 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.translate(-x, -y);
+  }
+
   for (let i = 0; i < lines.length; i++) {
     const ly = y + (i - (lines.length - 1) / 2) * lh;
 
@@ -185,6 +196,7 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
     ctx.fillStyle = fill;
     ctx.fillText(lines[i], x, ly);
   }
+  if (rot !== 0) ctx.restore();
   ctx.letterSpacing = "0px";
   ctx.shadowColor = "transparent";
   ctx.shadowBlur = 0;

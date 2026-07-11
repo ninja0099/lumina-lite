@@ -94,6 +94,9 @@
           <label>POSITION Y <span class="val" id="posYVal">50%</span>
             <input id="posY" type="range" min="0" max="100" step="1" value="50" />
           </label>
+          <label>TEXT ROTATION <span class="val" id="textRotationVal">0°</span>
+            <input id="textRotation" type="range" min="-90" max="90" step="1" value="0" />
+          </label>
           <label>ALIGN
             <div class="btn-group" id="alignGroup">
               <button class="btn toggle" data-val="left">LEFT</button>
@@ -160,6 +163,33 @@
           </label>
           <label>WAVE FREQUENCY <span class="val" id="bgWaveFrequencyVal">4</span>
             <input id="bgWaveFrequency" type="range" min="1" max="12" step="1" value="4" />
+          </label>
+          <label>GLITCH / DATAMOSH <span class="val" id="bgGlitchVal">0%</span>
+            <input id="bgGlitch" type="range" min="0" max="100" step="1" value="0" />
+          </label>
+          <label>FILM NOISE / GRAIN <span class="val" id="bgFilmGrainVal">0%</span>
+            <input id="bgFilmGrain" type="range" min="0" max="100" step="1" value="0" />
+          </label>
+          <label class="inline">
+            <span>Halftone dots</span>
+            <input id="bgHalftone" type="checkbox" />
+          </label>
+          <label>VIGNETTE <span class="val" id="bgVignetteVal">0%</span>
+            <input id="bgVignette" type="range" min="0" max="100" step="1" value="0" />
+          </label>
+          <label class="inline">
+            <span>Pixelate / mosaic</span>
+            <input id="bgPixelate" type="checkbox" />
+          </label>
+          <label>BLOOM / GLOW <span class="val" id="bgBloomVal">0%</span>
+            <input id="bgBloom" type="range" min="0" max="100" step="1" value="0" />
+          </label>
+          <label class="inline">
+            <span>Long shadow (text echo)</span>
+            <input id="bgLongShadow" type="checkbox" />
+          </label>
+          <label>ECHO COPIES <span class="val" id="bgEchoVal">0</span>
+            <input id="bgEcho" type="range" min="0" max="8" step="1" value="0" />
           </label>
           <h2>BORDER GLOW</h2>
           <label class="inline">
@@ -261,7 +291,7 @@
     </main>
 
     <footer class="footer">
-      © 2026 LUMINA · BY <a href="https://buycoffee.to/trk88pl" target="_blank">TRK88PL</a> v1.8.0
+      © 2026 LUMINA · BY <a href="https://buycoffee.to/trk88pl" target="_blank">TRK88PL</a> v1.9.0
     </footer>
 
     <script type="module" src="/src/main.ts"></script>
