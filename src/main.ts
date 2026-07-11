@@ -3,8 +3,6 @@ import {
   createDefaultState,
   FONTS,
   PATTERNS,
-  MASKS,
-  ANIMATIONS,
   type DesignState,
   type Align,
   type LayerKey,
@@ -44,6 +42,8 @@ const binders: Binder[] = [
   { id: "bgColor", apply: (s, v) => (s.bgColor = String(v)) },
   { id: "bgColor2", apply: (s, v) => (s.bgColor2 = String(v)) },
   { id: "bgGradientAngle", apply: (s, v) => (s.bgGradientAngle = Number(v)) },
+  { id: "bgGradientOpacity", apply: (s, v) => (s.bgGradientOpacity = Number(v)) },
+  { id: "cornerRadius", apply: (s, v) => (s.cornerRadius = Number(v)) },
   { id: "borderGlow", apply: (s, v) => (s.borderGlow = Boolean(v)) },
   { id: "glassPanel", apply: (s, v) => (s.glassPanel = Boolean(v)) },
   { id: "pattern", apply: (s, v) => (s.pattern = v as DesignState["pattern"]) },
@@ -69,12 +69,6 @@ const binders: Binder[] = [
   { id: "duotoneColorA", apply: (s, v) => (s.duotoneColorA = String(v)) },
   { id: "duotoneColorB", apply: (s, v) => (s.duotoneColorB = String(v)) },
   { id: "duotoneIntensity", apply: (s, v) => (s.duotoneIntensity = Number(v)) },
-  { id: "animateBg", apply: (s, v) => (s.animateBg = Boolean(v)) },
-  { id: "gifDuration", apply: (s, v) => { s.gifDuration = Number(v); updateGifInfo(); } },
-  { id: "gifFps", apply: (s, v) => { s.gifFps = Number(v); updateGifInfo(); } },
-  { id: "gifQuality", apply: (s, v) => (s.gifQuality = Number(v)) },
-  { id: "gifMaxSize", apply: (s, v) => (s.gifMaxSize = Number(v)) },
-  { id: "gifLoop", apply: (s, v) => (s.gifLoop = Boolean(v)) },
 ];
 
 function readValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) {
@@ -132,10 +126,8 @@ const labels: [string, string][] = [
   ["bgBloom", "bgBloomVal"],
   ["bgEcho", "bgEchoVal"],
   ["duotoneIntensity", "duotoneIntensityVal"],
-  ["gifDuration", "gifDurationVal"],
-  ["gifFps", "gifFpsVal"],
-  ["gifQuality", "gifQualityVal"],
-  ["gifMaxSize", "gifMaxSizeVal"],
+  ["bgGradientOpacity", "bgGradientOpacityVal"],
+  ["cornerRadius", "cornerRadiusVal"],
 ];
 for (const [input, label] of labels) {
   const el = $<HTMLInputElement>(input);
@@ -318,40 +310,6 @@ for (const p of PATTERNS) {
   patternSel.appendChild(opt);
 }
 
-// Mask buttons
-const maskGroup = $("maskGroup");
-for (const m of MASKS) {
-  const btn = document.createElement("button");
-  btn.className = "btn toggle" + (m === state.mask ? " active" : "");
-  btn.textContent = m;
-  btn.dataset.val = m;
-  btn.addEventListener("click", () => {
-    maskGroup.querySelectorAll(".btn").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    state.mask = m as DesignState["mask"];
-    pushHistory();
-    editor.scheduleDraw();
-  });
-  maskGroup.appendChild(btn);
-}
-
-// Animation buttons
-const animGroup = $("animGroup");
-for (const a of ANIMATIONS) {
-  const btn = document.createElement("button");
-  btn.className = "btn toggle" + (a === state.animation ? " active" : "");
-  btn.textContent = a;
-  btn.dataset.val = a;
-  btn.addEventListener("click", () => {
-    animGroup.querySelectorAll(".btn").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    state.animation = a;
-    pushHistory();
-    editor.scheduleDraw();
-  });
-  animGroup.appendChild(btn);
-}
-
 // Align buttons
 const alignGroup = $("alignGroup");
 alignGroup.querySelectorAll<HTMLButtonElement>(".btn").forEach((btn) => {
@@ -466,12 +424,6 @@ function syncInputsFromState() {
   alignGroup.querySelectorAll<HTMLButtonElement>(".btn").forEach((b) => {
     b.classList.toggle("active", b.dataset.val === state.align);
   });
-  maskGroup.querySelectorAll<HTMLButtonElement>(".btn").forEach((b) => {
-    b.classList.toggle("active", b.dataset.val === state.mask);
-  });
-  animGroup.querySelectorAll<HTMLButtonElement>(".btn").forEach((b) => {
-    b.classList.toggle("active", b.dataset.val === state.animation);
-  });
   for (const k of ["background", "pattern", "logo", "text"] as LayerKey[]) {
     ($(`layer${k[0].toUpperCase()}${k.slice(1)}`) as HTMLInputElement).checked = state.layers[k];
   }
@@ -552,25 +504,6 @@ $<HTMLInputElement>("bgImageFile").addEventListener("change", (e) => {
   reader.readAsDataURL(file);
 });
 
-// GIF frame count info
-function updateGifInfo() {
-  const frames = Math.round(state.gifDuration * state.gifFps);
-  $("gifInfo").textContent = `Total frames: ${frames}. Higher FPS / size / quality = bigger file and slower export.`;
-}
-
-// Export GIF — re-enable button when worker posts back the blob
-function runExportGif(btn: HTMLButtonElement): void {
-  btn.disabled = true;
-  const label = btn.textContent;
-  btn.textContent = "Exporting...";
-  editor.exportGif(state, () => {
-    btn.disabled = false;
-    btn.textContent = label;
-  });
-}
-$("exportGifBtn").addEventListener("click", () => runExportGif($("exportGifBtn") as HTMLButtonElement));
-$("exportGifTop").addEventListener("click", () => runExportGif($("exportGifTop") as HTMLButtonElement));
-
 // History (undo/redo)
 const history: DesignState[] = [structuredClone(state)];
 let histIdx = 0;
@@ -620,6 +553,5 @@ $("exportPng").addEventListener("click", () => editor.exportPng());
 
 // Initial render
 syncInputsFromState();
-updateGifInfo();
 updateHistoryButtons();
 editor.scheduleDraw();

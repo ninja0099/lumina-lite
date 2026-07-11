@@ -1,7 +1,5 @@
 import type { PatternName } from "./patterns";
-import type { MaskName } from "./masks";
 export { PATTERNS } from "./patterns";
-export { MASKS } from "./masks";
 
 export type Align = "left" | "center" | "right";
 
@@ -39,9 +37,11 @@ export interface DesignState {
 
   transparent: boolean;
   bgGradient: boolean;
+  bgGradientOpacity: number;
   bgColor: string;
   bgColor2: string;
   bgGradientAngle: number;
+  cornerRadius: number;
 
   pattern: PatternName;
   patternColor: string;
@@ -70,18 +70,8 @@ export interface DesignState {
   duotoneColorB: string;
   duotoneIntensity: number;
 
-  mask: MaskName;
   logoDataUrl: string | null;
   logoScale: number;
-
-  animation: string;
-  animateBg: boolean;
-
-  gifDuration: number;
-  gifFps: number;
-  gifQuality: number;
-  gifMaxSize: number;
-  gifLoop: boolean;
 
   layers: Record<LayerKey, boolean>;
 
@@ -112,30 +102,6 @@ export const FONTS = [
   "Manrope",
   "Poppins",
   "Rajdhani",
-] as const;
-
-export const ANIMATIONS = [
-  "None",
-  "Pulse",
-  "Slide In",
-  "Slide ← In",
-  "Slide → In",
-  "Slide ↑ In",
-  "Slide ↓ In",
-  "Fade In",
-  "Zoom In",
-  "Zoom Out",
-  "Typewriter",
-  "Glow Pulse",
-  "Bounce",
-  "Shake",
-  "Wave",
-  "Rotate",
-  "Swing",
-  "Flip",
-  "Float",
-  "Rainbow",
-  "Blink",
 ] as const;
 
 export function createDefaultState(): DesignState {
@@ -171,16 +137,17 @@ export function createDefaultState(): DesignState {
 
     transparent: false,
     bgGradient: true,
+    bgGradientOpacity: 0.45,
     bgColor: "#0b0b12",
     bgColor2: "#1b1b3a",
     bgGradientAngle: 135,
+    cornerRadius: 0,
 
     pattern: "None",
     patternColor: "#ffffff",
     glassPanel: false,
     borderGlow: false,
 
-    mask: "None",
     logoDataUrl: null,
     logoScale: 0.3,
 
@@ -205,15 +172,6 @@ export function createDefaultState(): DesignState {
     duotoneColorA: "#0b0b12",
     duotoneColorB: "#9aa0ff",
     duotoneIntensity: 0,
-
-    animation: "None",
-    animateBg: false,
-
-    gifDuration: 1.2,
-    gifFps: 16,
-    gifQuality: 15,
-    gifMaxSize: 500,
-    gifLoop: true,
 
     layers: { background: true, pattern: true, logo: true, text: true },
 

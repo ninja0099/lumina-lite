@@ -1,7 +1,6 @@
 import type { DesignState } from "./state";
 import { ensureFont } from "./fonts";
 import { drawPattern } from "./patterns";
-import { applyMask } from "./masks";
 import { applyBackgroundEffects, setDesignWidth } from "./effects";
 
 let exportW = 1920;
@@ -74,18 +73,21 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
 
     if (s.bgGradient) {
       ctx.save();
-      ctx.globalAlpha = 0.45;
+      ctx.globalAlpha = Math.max(0, Math.min(1, s.bgGradientOpacity));
       ctx.fillStyle = angleGradient(ctx, w, h, s.bgGradientAngle, s.bgColor, s.bgColor2);
       ctx.fillRect(0, 0, w, h);
       ctx.restore();
     }
   } else if (s.layers.background && !s.transparent) {
-    if (s.bgGradient) {
-      ctx.fillStyle = angleGradient(ctx, w, h, s.bgGradientAngle, s.bgColor, s.bgColor2);
-    } else {
-      ctx.fillStyle = s.bgColor;
-    }
+    ctx.fillStyle = s.bgColor;
     ctx.fillRect(0, 0, w, h);
+    if (s.bgGradient) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, s.bgGradientOpacity));
+      ctx.fillStyle = angleGradient(ctx, w, h, s.bgGradientAngle, s.bgColor, s.bgColor2);
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
     if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
       applyBackgroundEffects(ctx, w, h, s);
     }
@@ -100,7 +102,6 @@ function paintFg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
   if (s.layers.text && s.glassPanel) drawGlass(ctx, w, h);
 
   ctx.save();
-  if (s.mask !== "None") applyMask(ctx, w, h, s.mask);
 
   if (s.layers.logo && logoImg) {
     const lw = w * s.logoScale;
@@ -128,19 +129,37 @@ function paintFg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
   ctx.restore();
 }
 
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  const rad = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+  ctx.beginPath();
+  ctx.moveTo(rad, 0);
+  ctx.arcTo(w, 0, w, h, rad);
+  ctx.arcTo(w, h, 0, h, rad);
+  ctx.arcTo(0, h, 0, 0, rad);
+  ctx.arcTo(0, 0, w, 0, rad);
+  ctx.closePath();
+}
+
 function paint(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   s: DesignState,
-  time?: number,
 ): void {
-  // Reset any leftover transform/state from the previous frame's animation
-  // so clearRect always covers the full canvas.
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, w, h);
   ctx.save();
-  applyAnimation(ctx, w, h, s, time ?? performance.now());
+  // Rounded corners: clip the whole composition to a rounded rect so the
+  // exported image itself has cut corners.
+  if (s.cornerRadius > 0) {
+    roundRectPath(ctx, w, h, s.cornerRadius * (w / exportW));
+    ctx.clip();
+  }
   paintBg(ctx, w, h, s);
   paintFg(ctx, w, h, s);
   ctx.restore();
@@ -170,7 +189,6 @@ function drawGlass(ctx: CanvasRenderingContext2D, w: number, h: number): void {
 function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
   let text = s.uppercase ? s.text.toUpperCase() : s.text;
   if (!text) return;
-  if (currentCharLimit !== undefined) text = text.slice(0, currentCharLimit);
 
   const scale = w / exportW;
   const px = s.fontSize * scale;
@@ -249,154 +267,6 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
   ctx.shadowBlur = 0;
 }
 
-// --- Animation ---
-
-let animStart = 0;
-let currentCharLimit: number | undefined;
-
-export function resetAnimation(): void {
-  animStart = performance.now();
-}
-
-function applyAnimation(
-  ctx: CanvasRenderingContext2D,
-  w: number, h: number,
-  s: DesignState,
-  time: number,
-): void {
-  const anim = s.animation;
-  currentCharLimit = undefined;
-  if (anim === "None") return;
-
-  if (!animStart) animStart = time;
-  const t = Math.min((time - animStart) / 1000, 100);
-  const loopPeriod = s.gifDuration || 2;
-  const loop = t % loopPeriod;
-
-  const cx = w / 2, cy = h / 2;
-
-  switch (anim) {
-    case "Pulse": {
-      const sc = 1 + 0.08 * Math.sin(loop * Math.PI);
-      ctx.translate(cx, cy);
-      ctx.scale(sc, sc);
-      ctx.translate(-cx, -cy);
-      break;
-    }
-    case "Slide In": {
-      const p = easeOut(Math.min(t / 0.8, 1));
-      ctx.globalAlpha = p;
-      break;
-    }
-    case "Slide ← In": {
-      const p = easeOut(Math.min(t / 0.8, 1));
-      ctx.translate(-w * (1 - p), 0);
-      break;
-    }
-    case "Slide → In": {
-      const p = easeOut(Math.min(t / 0.8, 1));
-      ctx.translate(w * (1 - p), 0);
-      break;
-    }
-    case "Slide ↑ In": {
-      const p = easeOut(Math.min(t / 0.8, 1));
-      ctx.translate(0, -h * (1 - p));
-      break;
-    }
-    case "Slide ↓ In": {
-      const p = easeOut(Math.min(t / 0.8, 1));
-      ctx.translate(0, h * (1 - p));
-      break;
-    }
-    case "Fade In": {
-      const p = easeOut(Math.min(t / 1, 1));
-      ctx.globalAlpha = p;
-      break;
-    }
-    case "Zoom In": {
-      const p = easeOut(Math.min(t / 0.8, 1));
-      const sc = 0.3 + 0.7 * p;
-      ctx.translate(cx, cy);
-      ctx.scale(sc, sc);
-      ctx.translate(-cx, -cy);
-      break;
-    }
-    case "Zoom Out": {
-      const p = easeOut(Math.min(t / 0.8, 1));
-      const sc = 1.7 - 0.7 * p;
-      ctx.translate(cx, cy);
-      ctx.scale(sc, sc);
-      ctx.translate(-cx, -cy);
-      break;
-    }
-    case "Glow Pulse": {
-      ctx.shadowColor = s.textColor;
-      ctx.shadowBlur = (w / 12) * (0.6 + 0.4 * Math.sin(loop * Math.PI));
-      break;
-    }
-    case "Bounce": {
-      const p = Math.abs(Math.sin(t * 3));
-      ctx.translate(0, -h * 0.08 * p);
-      break;
-    }
-    case "Shake": {
-      const dx = Math.sin(t * 25) * w * 0.01;
-      const dy = Math.cos(t * 20) * h * 0.005;
-      ctx.translate(dx, dy);
-      break;
-    }
-    case "Wave": {
-      const dy = Math.sin(t * 2) * h * 0.04;
-      ctx.translate(0, dy);
-      break;
-    }
-    case "Rotate": {
-      const angle = Math.sin(t * 1.5) * 0.06;
-      ctx.translate(cx, cy);
-      ctx.rotate(angle);
-      ctx.translate(-cx, -cy);
-      break;
-    }
-    case "Swing": {
-      const angle = Math.sin(t * 3) * 0.08;
-      ctx.translate(cx, h * 0.2);
-      ctx.rotate(angle);
-      ctx.translate(-cx, -h * 0.2);
-      break;
-    }
-    case "Flip": {
-      const p = (1 - Math.cos(t * 2)) / 2;
-      ctx.translate(cx, cy);
-      ctx.scale(1 - 2 * p * 0.3, 1);
-      ctx.translate(-cx, -cy);
-      break;
-    }
-    case "Float": {
-      const dx = Math.sin(t * 1.2) * w * 0.015;
-      const dy = Math.cos(t * 0.8) * h * 0.02;
-      ctx.translate(dx, dy);
-      break;
-    }
-    case "Rainbow": {
-      const hue = (t * 60) % 360;
-      ctx.filter = `hue-rotate(${hue}deg)`;
-      break;
-    }
-    case "Blink": {
-      ctx.globalAlpha = Math.sin(t * 4) > 0 ? 1 : 0.15;
-      break;
-    }
-    case "Typewriter": {
-      currentCharLimit = Math.floor(Math.min(t / 1.2, 1) * s.text.length * 2);
-      break;
-    }
-  }
-}
-
-function easeOut(t: number): number {
-  return 1 - Math.pow(1 - t, 3);
-}
-
 // --- Public API ---
 
 export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignState) {
@@ -415,17 +285,15 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
 
   setDesignWidth(exportW);
 
-  // Render loop. A static edit calls scheduleDraw() to (re)start it;
-  // with an animation active the loop keeps running so motion plays in
-  // the preview. With "None" it renders one frame then idles until
-  // the next scheduleDraw().
+  // Static render loop. scheduleDraw() (re)starts it; it paints one
+  // frame then idles until the next scheduleDraw().
   let rafId = 0;
-  let lastAnim = "None";
   const warmedFonts = new Set<string>();
 
-  function render(time: number): void {
+  function render(): void {
+    rafId = 0;
     const state = getState();
-    paint(ctx, canvas.width, canvas.height, state, time);
+    paint(ctx, canvas.width, canvas.height, state);
     if (!warmedFonts.has(state.font)) {
       warmedFonts.add(state.font);
       ensureFont(state.font, state.weight).then(() => {
@@ -434,49 +302,12 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     }
   }
 
-  function loop(time: number): void {
-    const state = getState();
-    if (state.animation !== lastAnim) {
-      if (state.animation !== "None") resetAnimation();
-      lastAnim = state.animation;
-    }
-    render(time);
-    if (state.animation !== "None") {
-      rafId = requestAnimationFrame(loop);
-    } else {
-      rafId = 0; // idle: stop; next scheduleDraw restarts
-    }
-  }
-
   function startLoop(): void {
-    if (!rafId) rafId = requestAnimationFrame(loop);
+    if (!rafId) rafId = requestAnimationFrame(() => render());
   }
 
   function scheduleDraw(): void {
     startLoop();
-  }
-
-  // Render a specific animation frame to a given canvas context (for GIF export).
-  function renderFrame(
-    target: CanvasRenderingContext2D,
-    w: number,
-    h: number,
-    state: DesignState,
-    timeMs: number,
-  ): void {
-    if (state.animateBg && state.animation !== "None") {
-      const off = document.createElement("canvas");
-      off.width = w;
-      off.height = h;
-      const octx = off.getContext("2d")!;
-      applyAnimation(octx, w, h, state, timeMs);
-      paintBg(octx, w, h, state);
-      target.clearRect(0, 0, w, h);
-      target.drawImage(off, 0, 0);
-      paintFg(target, w, h, state);
-    } else {
-      paint(target, w, h, state, timeMs);
-    }
   }
 
   function exportPng(): void {
@@ -492,62 +323,9 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     a.click();
   }
 
-  function exportGif(state: DesignState, onComplete?: () => void): void {
-    resetAnimation(); // start GIF frames at loop t=0
-    const baseTime = performance.now(); // anchor frame times to animStart clock
-    const dur = state.gifDuration;
-    const fps = state.gifFps;
-    const maxSz = state.gifMaxSize;
-    const gw = maxSz;
-    const gh = Math.round((PH * maxSz) / PW);
-    const frameCount = Math.round(dur * fps);
-    const delay = 1000 / fps;
-
-    const offscreen = document.createElement("canvas");
-    offscreen.width = gw;
-    offscreen.height = gh;
-    const octx = offscreen.getContext("2d", { willReadFrequently: true })!;
-    // No octx.scale: draw functions already size content by w/exportW, and a
-    // transform here would corrupt clearRect/getImageData (both transform-aware).
-
-    const frameData: { data: Uint8ClampedArray; delay: number }[] = [];
-    for (let i = 0; i < frameCount; i++) {
-      const t = baseTime + (i / frameCount) * dur * 1000;
-      octx.clearRect(0, 0, gw, gh);
-      renderFrame(octx, gw, gh, state, t);
-      frameData.push({
-        data: new Uint8ClampedArray(octx.getImageData(0, 0, gw, gh).data),
-        delay,
-      });
-    }
-
-    const worker = new Worker(
-      new URL("./gif-worker.ts", import.meta.url),
-      { type: "module" },
-    );
-    worker.onmessage = (e) => {
-      const { blob } = e.data;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "lumina-lite.gif";
-      a.click();
-      URL.revokeObjectURL(url);
-      onComplete?.();
-    };
-    worker.postMessage({
-      frames: frameData,
-      width: gw,
-      height: gh,
-      loop: state.gifLoop,
-    });
-  }
-
   return {
     scheduleDraw,
     exportPng,
-    exportGif,
-    resetAnimation,
     getExportSize(): { w: number; h: number } {
       return { w: exportW, h: exportH };
     },

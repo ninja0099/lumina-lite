@@ -22,7 +22,6 @@
       </div>
       <div class="topbar-right">
         <button id="exportPng" class="btn primary">Export PNG</button>
-        <button id="exportGifTop" class="btn primary">GIF</button>
       </div>
     </header>
 
@@ -199,6 +198,9 @@
           <label>ANGLE <span class="val" id="bgGradientAngleVal">135°</span>
             <input id="bgGradientAngle" type="range" min="0" max="360" step="1" value="135" />
           </label>
+          <label>GRADIENT OPACITY <span class="val" id="bgGradientOpacityVal">0.45</span>
+            <input id="bgGradientOpacity" type="range" min="0" max="1" step="0.01" value="0.45" />
+          </label>
           <label>BACKGROUND IMAGE
             <input id="bgImageFile" type="file" accept="image/*" />
           </label>
@@ -308,47 +310,12 @@
           </label>
         </div>
 
-        <!-- Image Mask -->
+        <!-- Corners -->
         <div class="group">
-          <h2>IMAGE MASK</h2>
-          <label>MASK SHAPE
-            <div class="btn-grid" id="maskGroup"></div>
+          <h2>ROUNDED CORNERS</h2>
+          <label>CORNER RADIOUS <span class="val" id="cornerRadiusVal">0px</span>
+            <input id="cornerRadius" type="range" min="0" max="300" step="1" value="0" />
           </label>
-        </div>
-
-        <!-- Animation -->
-        <div class="group">
-          <h2>ANIMATION (GIF)</h2>
-          <label>ANIMATION TYPE
-            <div class="btn-grid" id="animGroup"></div>
-          </label>
-          <label class="inline">
-            <span>Animate background too</span>
-            <input id="animateBg" type="checkbox" />
-          </label>
-        </div>
-
-        <!-- GIF Output -->
-        <div class="group">
-          <h2>GIF OUTPUT</h2>
-          <label>DURATION <span class="val" id="gifDurationVal">1.2s</span>
-            <input id="gifDuration" type="range" min="0.3" max="6" step="0.1" value="1.2" />
-          </label>
-          <label>FRAME RATE (FPS) <span class="val" id="gifFpsVal">16</span>
-            <input id="gifFps" type="range" min="4" max="30" step="1" value="16" />
-          </label>
-          <label>QUALITY <span class="val" id="gifQualityVal">15 (lower = better)</span>
-            <input id="gifQuality" type="range" min="1" max="30" step="1" value="15" />
-          </label>
-          <label>MAX SIZE <span class="val" id="gifMaxSizeVal">500px</span>
-            <input id="gifMaxSize" type="range" min="200" max="1200" step="50" value="500" />
-          </label>
-          <label class="inline">
-            <span>Loop forever</span>
-            <input id="gifLoop" type="checkbox" checked />
-          </label>
-          <p id="gifInfo" class="muted small">Total frames: 19. Higher FPS / size / quality = bigger file and slower export.</p>
-          <button id="exportGifBtn" class="btn primary full">Export as GIF</button>
         </div>
 
         <!-- Layers -->
@@ -372,7 +339,7 @@
     </main>
 
     <footer class="footer">
-      © 2026 LUMINA · BY <a href="https://buycoffee.to/trk88pl" target="_blank">TRK88PL</a> v1.9.1
+      © 2026 LUMINA · BY <a href="https://buycoffee.to/trk88pl" target="_blank">TRK88PL</a> v1.10.0
     </footer>
 
     <script type="module" src="/src/main.ts"></script>
