@@ -119,6 +119,9 @@
           <label class="inline">COLOR B
             <input id="textColor2" type="color" value="#9aa0ff" />
           </label>
+          <label>ANGLE <span class="val" id="textGradientAngleVal">135°</span>
+            <input id="textGradientAngle" type="range" min="0" max="360" step="1" value="135" />
+          </label>
           <label class="inline">
             <span>Transparent text (cutout)</span>
             <input id="transparentText" type="checkbox" />
@@ -158,8 +161,23 @@
           <label class="inline">COLOR B
             <input id="bgColor2" type="color" value="#1b1b3a" />
           </label>
+          <label>ANGLE <span class="val" id="bgGradientAngleVal">135°</span>
+            <input id="bgGradientAngle" type="range" min="0" max="360" step="1" value="135" />
+          </label>
           <label>BACKGROUND IMAGE
             <input id="bgImageFile" type="file" accept="image/*" />
+          </label>
+          <label>IMAGE OPACITY <span class="val" id="bgImageOpacityVal">0.60</span>
+            <input id="bgImageOpacity" type="range" min="0" max="1" step="0.05" value="0.6" />
+          </label>
+          <label>IMAGE X <span class="val" id="bgImageXVal">50%</span>
+            <input id="bgImageX" type="range" min="0" max="100" step="1" value="50" />
+          </label>
+          <label>IMAGE Y <span class="val" id="bgImageYVal">50%</span>
+            <input id="bgImageY" type="range" min="0" max="100" step="1" value="50" />
+          </label>
+          <label>IMAGE ROTATION <span class="val" id="bgImageRotationVal">0°</span>
+            <input id="bgImageRotation" type="range" min="-90" max="90" step="1" value="0" />
           </label>
           <h2>BACKGROUND EFFECTS</h2>
           <label>GAUSSIAN BLUR <span class="val" id="bgBlurVal">0px</span>
@@ -319,7 +337,7 @@
     </main>
 
     <footer class="footer">
-      © 2026 LUMINA · BY <a href="https://buycoffee.to/trk88pl" target="_blank">TRK88PL</a> v1.9.0
+      © 2026 LUMINA · BY <a href="https://buycoffee.to/trk88pl" target="_blank">TRK88PL</a> v1.9.1
     </footer>
 
     <script type="module" src="/src/main.ts"></script>

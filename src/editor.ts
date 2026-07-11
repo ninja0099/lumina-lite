@@ -23,6 +23,29 @@ export function setBgImage(dataUrl: string | null): void {
   img.src = dataUrl;
 }
 
+function angleGradient(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  deg: number,
+  c0: string,
+  c1: string,
+): CanvasGradient {
+  const a = (deg * Math.PI) / 180;
+  const len = (Math.abs(Math.cos(a)) * w + Math.abs(Math.sin(a)) * h) / 2;
+  const cx = w / 2;
+  const cy = h / 2;
+  const g = ctx.createLinearGradient(
+    cx - Math.cos(a) * len,
+    cy - Math.sin(a) * len,
+    cx + Math.cos(a) * len,
+    cy + Math.sin(a) * len,
+  );
+  g.addColorStop(0, c0);
+  g.addColorStop(1, c1);
+  return g;
+}
+
 function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
   ctx.clearRect(0, 0, w, h);
 
@@ -30,14 +53,20 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     const scale = Math.max(w / bgImg.width, h / bgImg.height);
     const iw = bgImg.width * scale;
     const ih = bgImg.height * scale;
-    const ox = (w - iw) / 2;
-    const oy = (h - ih) / 2;
+    const cx = w * (s.bgImageX / 100);
+    const cy = h * (s.bgImageY / 100);
+    const rot = (s.bgImageRotation * Math.PI) / 180;
 
     const off = document.createElement("canvas");
     off.width = w;
     off.height = h;
     const octx = off.getContext("2d")!;
-    octx.drawImage(bgImg, ox, oy, iw, ih);
+    octx.save();
+    octx.globalAlpha = Math.max(0, Math.min(1, s.bgImageOpacity));
+    octx.translate(cx, cy);
+    octx.rotate(rot);
+    octx.drawImage(bgImg, -iw / 2, -ih / 2, iw, ih);
+    octx.restore();
     if (s.bgBlur > 0 || s.bgChromatic > 0 || s.bgWaveAmount > 0 || s.bgGlitch > 0 || s.bgFilmGrain > 0 || s.bgVignette > 0 || s.bgBloom > 0 || s.bgHalftone || s.bgPixelate || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
       applyBackgroundEffects(octx, w, h, s);
     }
@@ -46,19 +75,13 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     if (s.bgGradient) {
       ctx.save();
       ctx.globalAlpha = 0.45;
-      const g = ctx.createLinearGradient(0, 0, w, h);
-      g.addColorStop(0, s.bgColor);
-      g.addColorStop(1, s.bgColor2);
-      ctx.fillStyle = g;
+      ctx.fillStyle = angleGradient(ctx, w, h, s.bgGradientAngle, s.bgColor, s.bgColor2);
       ctx.fillRect(0, 0, w, h);
       ctx.restore();
     }
   } else if (s.layers.background && !s.transparent) {
     if (s.bgGradient) {
-      const g = ctx.createLinearGradient(0, 0, w, h);
-      g.addColorStop(0, s.bgColor);
-      g.addColorStop(1, s.bgColor2);
-      ctx.fillStyle = g;
+      ctx.fillStyle = angleGradient(ctx, w, h, s.bgGradientAngle, s.bgColor, s.bgColor2);
     } else {
       ctx.fillStyle = s.bgColor;
     }
@@ -147,7 +170,19 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
 
   let fill: string | CanvasGradient = s.textColor;
   if (s.textGradient) {
-    const g = ctx.createLinearGradient(0, h * 0.3, 0, h * 0.7);
+    const a = (s.textGradientAngle * Math.PI) / 180;
+    const metrics = ctx.measureText(s.text || "A");
+    const tw = Math.max(metrics.width, px);
+    const th = px * s.lineHeight;
+    const tx = s.align === "left" ? w * 0.06 : s.align === "right" ? w * 0.94 : w * (s.posX / 100);
+    const ty = h * (s.posY / 100);
+    const len = (Math.abs(Math.cos(a)) * tw + Math.abs(Math.sin(a)) * th) / 2;
+    const g = ctx.createLinearGradient(
+      tx - Math.cos(a) * len,
+      ty - Math.sin(a) * len,
+      tx + Math.cos(a) * len,
+      ty + Math.sin(a) * len,
+    );
     g.addColorStop(0, s.textColor);
     g.addColorStop(1, s.textColor2);
     fill = g;

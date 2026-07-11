@@ -39,6 +39,7 @@ const binders: Binder[] = [
   { id: "textGradient", apply: (s, v) => (s.textGradient = Boolean(v)) },
   { id: "textColor", apply: (s, v) => (s.textColor = String(v)) },
   { id: "textColor2", apply: (s, v) => (s.textColor2 = String(v)) },
+  { id: "textGradientAngle", apply: (s, v) => (s.textGradientAngle = Number(v)) },
   { id: "transparentText", apply: (s, v) => (s.transparentText = Boolean(v)) },
   { id: "textShadow", apply: (s, v) => (s.textShadow = Boolean(v)) },
   { id: "shadowBlur", apply: (s, v) => (s.shadowBlur = Number(v)) },
@@ -48,11 +49,16 @@ const binders: Binder[] = [
   { id: "bgGradient", apply: (s, v) => (s.bgGradient = Boolean(v)) },
   { id: "bgColor", apply: (s, v) => (s.bgColor = String(v)) },
   { id: "bgColor2", apply: (s, v) => (s.bgColor2 = String(v)) },
+  { id: "bgGradientAngle", apply: (s, v) => (s.bgGradientAngle = Number(v)) },
   { id: "borderGlow", apply: (s, v) => (s.borderGlow = Boolean(v)) },
   { id: "glassPanel", apply: (s, v) => (s.glassPanel = Boolean(v)) },
   { id: "pattern", apply: (s, v) => (s.pattern = v as DesignState["pattern"]) },
   { id: "patternColor", apply: (s, v) => (s.patternColor = String(v)) },
   { id: "logoScale", apply: (s, v) => (s.logoScale = Number(v)) },
+  { id: "bgImageOpacity", apply: (s, v) => (s.bgImageOpacity = Number(v)) },
+  { id: "bgImageX", apply: (s, v) => (s.bgImageX = Number(v)) },
+  { id: "bgImageY", apply: (s, v) => (s.bgImageY = Number(v)) },
+  { id: "bgImageRotation", apply: (s, v) => (s.bgImageRotation = Number(v)) },
   { id: "bgBlur", apply: (s, v) => (s.bgBlur = Number(v)) },
   { id: "bgChromatic", apply: (s, v) => (s.bgChromatic = Number(v)) },
   { id: "bgWaveAmount", apply: (s, v) => (s.bgWaveAmount = Number(v)) },
@@ -114,6 +120,10 @@ const labels: [string, string][] = [
   ["shadowBlur", "shadowBlurVal"],
   ["shadowOpacity", "shadowOpacityVal"],
   ["logoScale", "logoScaleVal"],
+  ["bgImageOpacity", "bgImageOpacityVal"],
+  ["bgImageX", "bgImageXVal"],
+  ["bgImageY", "bgImageYVal"],
+  ["bgImageRotation", "bgImageRotationVal"],
   ["bgBlur", "bgBlurVal"],
   ["bgChromatic", "bgChromaticVal"],
   ["bgWaveAmount", "bgWaveAmountVal"],
@@ -133,6 +143,13 @@ for (const [input, label] of labels) {
   const el = $<HTMLInputElement>(input);
   const out = $(label);
   el.addEventListener("input", () => (out.textContent = el.value));
+}
+
+// Angle labels append the degree symbol
+for (const id of ["textGradientAngle", "bgGradientAngle"]) {
+  const el = $<HTMLInputElement>(id);
+  const out = $(`${id}Val`);
+  el.addEventListener("input", () => (out.textContent = `${el.value}°`));
 }
 
 // Font dropdown
@@ -286,6 +303,9 @@ function syncInputsFromState() {
   patternSel.value = state.pattern;
   for (const [input, label] of labels) {
     $(label).textContent = $<HTMLInputElement>(input).value;
+  }
+  for (const id of ["textGradientAngle", "bgGradientAngle"]) {
+    $(`${id}Val`).textContent = `${$<HTMLInputElement>(id).value}°`;
   }
   // Sync button groups
   alignGroup.querySelectorAll<HTMLButtonElement>(".btn").forEach((b) => {

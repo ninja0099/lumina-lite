@@ -24,6 +24,7 @@ export interface DesignState {
   textGradient: boolean;
   textColor: string;
   textColor2: string;
+  textGradientAngle: number;
   transparentText: boolean;
   textShadow: boolean;
   shadowBlur: number;
@@ -34,6 +35,7 @@ export interface DesignState {
   bgGradient: boolean;
   bgColor: string;
   bgColor2: string;
+  bgGradientAngle: number;
 
   pattern: PatternName;
   patternColor: string;
@@ -41,6 +43,10 @@ export interface DesignState {
   borderGlow: boolean;
 
   bgImageDataUrl: string | null;
+  bgImageOpacity: number;
+  bgImageX: number;
+  bgImageY: number;
+  bgImageRotation: number;
   bgBlur: number;
   bgChromatic: number;
   bgWaveAmount: number;
@@ -144,6 +150,7 @@ export function createDefaultState(): DesignState {
     textGradient: false,
     textColor: "#ffffff",
     textColor2: "#9aa0ff",
+    textGradientAngle: 135,
     transparentText: false,
     textShadow: false,
     shadowBlur: 40,
@@ -154,6 +161,7 @@ export function createDefaultState(): DesignState {
     bgGradient: true,
     bgColor: "#0b0b12",
     bgColor2: "#1b1b3a",
+    bgGradientAngle: 135,
 
     pattern: "None",
     patternColor: "#ffffff",
@@ -165,6 +173,10 @@ export function createDefaultState(): DesignState {
     logoScale: 0.3,
 
     bgImageDataUrl: null,
+    bgImageOpacity: 0.6,
+    bgImageX: 50,
+    bgImageY: 50,
+    bgImageRotation: 0,
     bgBlur: 0,
     bgChromatic: 0,
     bgWaveAmount: 0,
