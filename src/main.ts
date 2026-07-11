@@ -8,7 +8,7 @@ import {
   type LayerKey,
 } from "./state";
 import { PRESETS } from "./presets";
-import { createEditor, setLogo, setBgImage } from "./editor";
+import { createEditor, setBgImage } from "./editor";
 
 const state = createDefaultState();
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
@@ -48,7 +48,6 @@ const binders: Binder[] = [
   { id: "glassPanel", apply: (s, v) => (s.glassPanel = Boolean(v)) },
   { id: "pattern", apply: (s, v) => (s.pattern = v as DesignState["pattern"]) },
   { id: "patternColor", apply: (s, v) => (s.patternColor = String(v)) },
-  { id: "logoScale", apply: (s, v) => (s.logoScale = Number(v)) },
   { id: "bgImageOpacity", apply: (s, v) => (s.bgImageOpacity = Number(v)) },
   { id: "bgImageX", apply: (s, v) => (s.bgImageX = Number(v)) },
   { id: "bgImageY", apply: (s, v) => (s.bgImageY = Number(v)) },
@@ -111,7 +110,6 @@ const labels: [string, string][] = [
   ["textRotation", "textRotationVal"],
   ["shadowBlur", "shadowBlurVal"],
   ["shadowOpacity", "shadowOpacityVal"],
-  ["logoScale", "logoScaleVal"],
   ["bgImageOpacity", "bgImageOpacityVal"],
   ["bgImageX", "bgImageXVal"],
   ["bgImageY", "bgImageYVal"],
@@ -424,14 +422,13 @@ function syncInputsFromState() {
   alignGroup.querySelectorAll<HTMLButtonElement>(".btn").forEach((b) => {
     b.classList.toggle("active", b.dataset.val === state.align);
   });
-  for (const k of ["background", "pattern", "logo", "text"] as LayerKey[]) {
+  for (const k of ["background", "pattern", "text"] as LayerKey[]) {
     ($(`layer${k[0].toUpperCase()}${k.slice(1)}`) as HTMLInputElement).checked = state.layers[k];
   }
-  $("clearLogo").style.display = state.logoDataUrl ? "block" : "none";
 }
 
 // Layer toggles
-for (const k of ["background", "pattern", "logo", "text"] as LayerKey[]) {
+for (const k of ["background", "pattern", "text"] as LayerKey[]) {
   const el = $(`layer${k[0].toUpperCase()}${k.slice(1)}`) as HTMLInputElement;
   el.addEventListener("change", () => {
     state.layers[k] = el.checked;
@@ -463,30 +460,6 @@ $<HTMLInputElement>("fontFile").addEventListener("change", (e) => {
     });
   };
   reader.readAsArrayBuffer(file);
-});
-
-// Logo from device
-$<HTMLInputElement>("logoFile").addEventListener("change", (e) => {
-  const file = (e.target as HTMLInputElement).files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const url = reader.result as string;
-    state.logoDataUrl = url;
-    setLogo(url);
-    $("clearLogo").style.display = "block";
-    pushHistory();
-    editor.scheduleDraw();
-  };
-  reader.readAsDataURL(file);
-});
-
-$("clearLogo").addEventListener("click", () => {
-  state.logoDataUrl = null;
-  setLogo(null);
-  $("clearLogo").style.display = "none";
-  pushHistory();
-  editor.scheduleDraw();
 });
 
 // Background image from device

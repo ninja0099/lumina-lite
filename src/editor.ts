@@ -6,14 +6,6 @@ import { applyBackgroundEffects, setDesignWidth } from "./effects";
 let exportW = 1920;
 let exportH = 1080;
 
-let logoImg: HTMLImageElement | null = null;
-export function setLogo(dataUrl: string | null): void {
-  if (!dataUrl) { logoImg = null; return; }
-  const img = new Image();
-  img.onload = () => (logoImg = img);
-  img.src = dataUrl;
-}
-
 let bgImg: HTMLImageElement | null = null;
 export function setBgImage(dataUrl: string | null): void {
   if (!dataUrl) { bgImg = null; return; }
@@ -102,13 +94,6 @@ function paintFg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
   if (s.layers.text && s.glassPanel) drawGlass(ctx, w, h);
 
   ctx.save();
-
-  if (s.layers.logo && logoImg) {
-    const lw = w * s.logoScale;
-    const scale = lw / logoImg.width;
-    const lh = logoImg.height * scale;
-    ctx.drawImage(logoImg, (w - lw) / 2, h * 0.12, lw, lh);
-  }
 
   if (s.layers.text) drawText(ctx, w, h, s);
 

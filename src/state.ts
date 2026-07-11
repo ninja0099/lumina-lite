@@ -3,7 +3,7 @@ export { PATTERNS } from "./patterns";
 
 export type Align = "left" | "center" | "right";
 
-export type LayerKey = "background" | "pattern" | "logo" | "text";
+export type LayerKey = "background" | "pattern" | "text";
 
 export interface DesignState {
   text: string;
@@ -69,9 +69,6 @@ export interface DesignState {
   duotoneColorA: string;
   duotoneColorB: string;
   duotoneIntensity: number;
-
-  logoDataUrl: string | null;
-  logoScale: number;
 
   layers: Record<LayerKey, boolean>;
 
@@ -148,9 +145,6 @@ export function createDefaultState(): DesignState {
     glassPanel: false,
     borderGlow: false,
 
-    logoDataUrl: null,
-    logoScale: 0.3,
-
     bgImageDataUrl: null,
     bgImageOpacity: 0.6,
     bgImageX: 50,
@@ -173,7 +167,7 @@ export function createDefaultState(): DesignState {
     duotoneColorB: "#9aa0ff",
     duotoneIntensity: 0,
 
-    layers: { background: true, pattern: true, logo: true, text: true },
+    layers: { background: true, pattern: true, text: true },
 
     activePreset: null,
   };
