@@ -1,7 +1,7 @@
 import type { DesignState } from "./state";
 import { ensureFont } from "./fonts";
 import { drawPattern } from "./patterns";
-import { applyBackgroundEffects, setDesignWidth } from "./effects";
+import { applyBackgroundEffects, setDesignWidth, configureTextFont, textX } from "./effects";
 
 let exportW = 1920;
 let exportH = 1080;
@@ -41,9 +41,6 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
   ctx.clearRect(0, 0, w, h);
 
   if (s.layers.background && bgImg && !s.transparent) {
-    const scale = Math.max(w / bgImg.width, h / bgImg.height);
-    const iw = bgImg.width * scale;
-    const ih = bgImg.height * scale;
     const cx = w * (s.bgImageX / 100);
     const cy = h * (s.bgImageY / 100);
     const rot = (s.bgImageRotation * Math.PI) / 180;
@@ -56,7 +53,24 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     octx.globalAlpha = Math.max(0, Math.min(1, s.bgImageOpacity));
     octx.translate(cx, cy);
     octx.rotate(rot);
-    octx.drawImage(bgImg, -iw / 2, -ih / 2, iw, ih);
+    if (s.bgImageFit === "tile") {
+      const tile = Math.max(40, Math.min(w, h) * 0.2);
+      for (let ty = -h; ty < h; ty += tile)
+        for (let tx = -w; tx < w; tx += tile)
+          octx.drawImage(bgImg, tx, ty, tile, tile);
+    } else {
+      let iw: number, ih: number;
+      if (s.bgImageFit === "stretch") { iw = w; ih = h; }
+      else {
+        const sc =
+          s.bgImageFit === "contain"
+            ? Math.min(w / bgImg.width, h / bgImg.height)
+            : Math.max(w / bgImg.width, h / bgImg.height);
+        iw = bgImg.width * sc;
+        ih = bgImg.height * sc;
+      }
+      octx.drawImage(bgImg, -iw / 2, -ih / 2, iw, ih);
+    }
     octx.restore();
     if (s.bgBlur > 0 || s.bgChromatic > 0 || s.bgWaveAmount > 0 || s.bgGlitch > 0 || s.bgFilmGrain > 0 || s.bgVignette > 0 || s.bgBloom > 0 || s.bgHalftone || s.bgPixelate || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
       applyBackgroundEffects(octx, w, h, s);
@@ -142,6 +156,7 @@ function paint(
   // Rounded corners: clip the whole composition to a rounded rect so the
   // exported image itself has cut corners.
   if (s.cornerRadius > 0) {
+    // cornerRadius is in export-px; scale to the current canvas width.
     roundRectPath(ctx, w, h, s.cornerRadius * (w / exportW));
     ctx.clip();
   }
@@ -177,11 +192,7 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
 
   const scale = w / exportW;
   const px = s.fontSize * scale;
-  const style = s.italic ? "italic" : "normal";
-  ctx.font = `${style} ${s.weight} ${px}px "${s.font}", system-ui, sans-serif`;
-  ctx.textAlign = s.align;
-  ctx.textBaseline = "middle";
-  ctx.letterSpacing = `${s.letterSpacing * scale}px`;
+  configureTextFont(ctx, w, s);
 
   let fill: string | CanvasGradient = s.textColor;
   if (s.textGradient) {
@@ -189,7 +200,7 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
     const metrics = ctx.measureText(s.text || "A");
     const tw = Math.max(metrics.width, px);
     const th = px * s.lineHeight;
-    const tx = s.align === "left" ? w * 0.06 : s.align === "right" ? w * 0.94 : w * (s.posX / 100);
+    const tx = textX(s, w);
     const ty = h * (s.posY / 100);
     const len = (Math.abs(Math.cos(a)) * tw + Math.abs(Math.sin(a)) * th) / 2;
     const g = ctx.createLinearGradient(
@@ -203,8 +214,7 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
     fill = g;
   }
 
-  const x =
-    s.align === "left" ? w * 0.06 : s.align === "right" ? w * 0.94 : w * (s.posX / 100);
+  const x = textX(s, w);
   const y = h * (s.posY / 100);
 
   const lines = text.split("\n");
@@ -235,7 +245,7 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
     ctx.shadowBlur = 0;
     ctx.shadowColor = "transparent";
     if (s.textShadow) {
-      ctx.shadowColor = `rgba(0,0,0,${s.shadowOpacity})`;
+      ctx.shadowColor = hexWithAlpha(s.shadowColor, s.shadowOpacity);
       ctx.shadowBlur = s.shadowBlur * scale;
     }
     if (s.textGlow) {
@@ -243,13 +253,29 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
       ctx.shadowBlur = Math.max(ctx.shadowBlur, w / 12);
     }
 
+    ctx.globalAlpha = Math.max(0, Math.min(1, s.textOpacity));
+
+    if (s.textOutline) {
+      ctx.lineWidth = Math.max(1, s.textOutlineWidth * scale);
+      ctx.strokeStyle = s.textOutlineColor;
+      ctx.lineJoin = "round";
+      ctx.strokeText(lines[i], x, ly);
+    }
     ctx.fillStyle = fill;
     ctx.fillText(lines[i], x, ly);
   }
   if (rot !== 0) ctx.restore();
+  ctx.globalAlpha = 1;
   ctx.letterSpacing = "0px";
   ctx.shadowColor = "transparent";
   ctx.shadowBlur = 0;
+}
+
+function hexWithAlpha(hex: string, a: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return `rgba(0,0,0,${a})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
 // --- Public API ---
@@ -295,22 +321,45 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     startLoop();
   }
 
-  function exportPng(): void {
+  function exportImage(): void {
+    const s = getState();
     const out = document.createElement("canvas");
     out.width = exportW;
     out.height = exportH;
     const octx = out.getContext("2d")!;
-    paint(octx, exportW, exportH, getState());
-    const url = out.toDataURL("image/png");
+    paint(octx, exportW, exportH, s);
+    const mime =
+      s.exportFormat === "jpeg" ? "image/jpeg" : s.exportFormat === "webp" ? "image/webp" : "image/png";
+    const url = out.toDataURL(mime, s.exportFormat === "png" ? undefined : s.exportQuality);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "lumina-lite.png";
+    a.download = `lumina-lite.${s.exportFormat === "jpeg" ? "jpg" : s.exportFormat}`;
     a.click();
+  }
+
+  async function copyToClipboard(): Promise<boolean> {
+    const s = getState();
+    const out = document.createElement("canvas");
+    out.width = exportW;
+    out.height = exportH;
+    const octx = out.getContext("2d")!;
+    paint(octx, exportW, exportH, s);
+    const mime =
+      s.exportFormat === "jpeg" ? "image/jpeg" : s.exportFormat === "webp" ? "image/webp" : "image/png";
+    try {
+      const blob: Blob | null = await new Promise((res) => out.toBlob(res, mime, s.exportFormat === "png" ? undefined : s.exportQuality));
+      if (!blob) return false;
+      await navigator.clipboard.write([new ClipboardItem({ [mime]: blob })]);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   return {
     scheduleDraw,
-    exportPng,
+    exportImage,
+    copyToClipboard,
     getExportSize(): { w: number; h: number } {
       return { w: exportW, h: exportH };
     },

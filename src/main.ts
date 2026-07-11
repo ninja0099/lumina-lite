@@ -11,6 +11,12 @@ import { PRESETS } from "./presets";
 import { createEditor, setBgImage } from "./editor";
 
 const state = createDefaultState();
+
+// Restore previous session before anything initializes the history baseline.
+try {
+  const raw = localStorage.getItem("lumina-lite-state");
+  if (raw) Object.assign(state, JSON.parse(raw));
+} catch { /* ignore corrupt */ }
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 
@@ -36,7 +42,12 @@ const binders: Binder[] = [
   { id: "textShadow", apply: (s, v) => (s.textShadow = Boolean(v)) },
   { id: "shadowBlur", apply: (s, v) => (s.shadowBlur = Number(v)) },
   { id: "shadowOpacity", apply: (s, v) => (s.shadowOpacity = Number(v)) },
+  { id: "shadowColor", apply: (s, v) => (s.shadowColor = String(v)) },
   { id: "textGlow", apply: (s, v) => (s.textGlow = Boolean(v)) },
+  { id: "textOpacity", apply: (s, v) => (s.textOpacity = Number(v)) },
+  { id: "textOutline", apply: (s, v) => (s.textOutline = Boolean(v)) },
+  { id: "textOutlineWidth", apply: (s, v) => (s.textOutlineWidth = Number(v)) },
+  { id: "textOutlineColor", apply: (s, v) => (s.textOutlineColor = String(v)) },
   { id: "transparent", apply: (s, v) => (s.transparent = Boolean(v)) },
   { id: "bgGradient", apply: (s, v) => (s.bgGradient = Boolean(v)) },
   { id: "bgColor", apply: (s, v) => (s.bgColor = String(v)) },
@@ -49,6 +60,7 @@ const binders: Binder[] = [
   { id: "pattern", apply: (s, v) => (s.pattern = v as DesignState["pattern"]) },
   { id: "patternColor", apply: (s, v) => (s.patternColor = String(v)) },
   { id: "bgImageOpacity", apply: (s, v) => (s.bgImageOpacity = Number(v)) },
+  { id: "bgImageFit", apply: (s, v) => (s.bgImageFit = String(v) as DesignState["bgImageFit"]) },
   { id: "bgImageX", apply: (s, v) => (s.bgImageX = Number(v)) },
   { id: "bgImageY", apply: (s, v) => (s.bgImageY = Number(v)) },
   { id: "bgImageRotation", apply: (s, v) => (s.bgImageRotation = Number(v)) },
@@ -68,6 +80,8 @@ const binders: Binder[] = [
   { id: "duotoneColorA", apply: (s, v) => (s.duotoneColorA = String(v)) },
   { id: "duotoneColorB", apply: (s, v) => (s.duotoneColorB = String(v)) },
   { id: "duotoneIntensity", apply: (s, v) => (s.duotoneIntensity = Number(v)) },
+  { id: "exportFormat", apply: (s, v) => (s.exportFormat = String(v) as DesignState["exportFormat"]) },
+  { id: "exportQuality", apply: (s, v) => (s.exportQuality = Number(v)) },
 ];
 
 function readValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) {
@@ -110,6 +124,9 @@ const labels: [string, string][] = [
   ["textRotation", "textRotationVal"],
   ["shadowBlur", "shadowBlurVal"],
   ["shadowOpacity", "shadowOpacityVal"],
+  ["textOpacity", "textOpacityVal"],
+  ["textOutlineWidth", "textOutlineWidthVal"],
+  ["exportQuality", "exportQualityVal"],
   ["bgImageOpacity", "bgImageOpacityVal"],
   ["bgImageX", "bgImageXVal"],
   ["bgImageY", "bgImageYVal"],
@@ -488,6 +505,7 @@ function pushHistory() {
   history.push(structuredClone(state));
   histIdx = history.length - 1;
   updateHistoryButtons();
+  saveState();
 }
 
 function applyHistory(snap: DesignState) {
@@ -521,8 +539,45 @@ $("redo").addEventListener("click", () => {
   updateHistoryButtons();
 });
 
-// Export
-$("exportPng").addEventListener("click", () => editor.exportPng());
+// Export + clipboard
+function flash(btn: HTMLButtonElement, msg: string): void {
+  const old = btn.textContent;
+  btn.textContent = msg;
+  setTimeout(() => (btn.textContent = old), 1200);
+}
+
+$("exportPng").addEventListener("click", () => editor.exportImage());
+$("exportTop").addEventListener("click", () => editor.exportImage());
+$("copyClip").addEventListener("click", async () => {
+  const btn = $("copyClip") as HTMLButtonElement;
+  const ok = await editor.copyToClipboard();
+  flash(btn, ok ? "Copied!" : "Failed");
+});
+
+// Collapsible groups
+document.querySelectorAll<HTMLElement>(".group-head").forEach((head) => {
+  head.addEventListener("click", () => {
+    const body = head.nextElementSibling as HTMLElement | null;
+    if (!body) return;
+    const collapsed = body.classList.toggle("collapsed");
+    head.querySelector(".chev")!.textContent = collapsed ? "▸" : "▾";
+  });
+});
+
+// Keyboard shortcuts: Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z (or Y) redo
+window.addEventListener("keydown", (e) => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (!mod) return;
+  const k = e.key.toLowerCase();
+  if (k === "z" && !e.shiftKey) { e.preventDefault(); $("undo").click(); }
+  else if ((k === "z" && e.shiftKey) || k === "y") { e.preventDefault(); $("redo").click(); }
+});
+
+// Persist modified state on every history commit.
+function saveState(): void {
+  try { localStorage.setItem("lumina-lite-state", JSON.stringify(state)); } catch { /* ignore quota */ }
+}
+window.addEventListener("beforeunload", saveState);
 
 // Initial render
 syncInputsFromState();

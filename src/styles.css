@@ -126,12 +126,26 @@ html, body {
   padding: 16px;
 }
 .group { margin-bottom: 22px; }
-.group h2 {
+.group-head {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--muted);
   margin: 0 0 10px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.group-head .chev { font-size: 11px; color: var(--accent); }
+.group-body.collapsed { display: none; }
+.group-body h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent);
+  margin: 14px 0 8px;
 }
 label {
   display: block;

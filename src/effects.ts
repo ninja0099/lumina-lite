@@ -134,6 +134,7 @@ function waveDistort(
 
 function glitch(img: ImageData, w: number, h: number, amount: number): void {
   const d = img.data;
+  const src = new Uint8ClampedArray(d); // read from a copy so bands don't compound
   const intensity = amount / 100;
   const bands = Math.floor(h / 20);
   for (let b = 0; b < bands; b++) {
@@ -146,7 +147,7 @@ function glitch(img: ImageData, w: number, h: number, amount: number): void {
         const sx = Math.max(0, Math.min(w - 1, x + shift));
         const di = (y * w + x) * 4;
         const si = (y * w + sx) * 4;
-        d[di] = d[si]; d[di + 1] = d[si + 1]; d[di + 2] = d[si + 2];
+        d[di] = src[si]; d[di + 1] = src[si + 1]; d[di + 2] = src[si + 2];
       }
     }
   }
@@ -157,7 +158,7 @@ function glitch(img: ImageData, w: number, h: number, amount: number): void {
       if (x >= w - off) continue;
       const si = i + off * 4;
       if (si >= d.length) continue;
-      d[i] = d[si];
+      d[i] = src[si];
     }
   }
 }
@@ -296,14 +297,10 @@ function drawLongShadow(ctx: CanvasRenderingContext2D, w: number, h: number, s: 
   if (!s.text) return;
   const scale = w / designW;
   const px = s.fontSize * scale;
-  const style = s.italic ? "italic" : "normal";
   ctx.save();
-  ctx.font = `${style} ${s.weight} ${px}px "${s.font}", system-ui, sans-serif`;
-  ctx.textAlign = s.align;
-  ctx.textBaseline = "middle";
-  ctx.letterSpacing = `${s.letterSpacing * scale}px`;
+  configureTextFont(ctx, w, s);
   const text = s.uppercase ? s.text.toUpperCase() : s.text;
-  const x = s.align === "left" ? w * 0.06 : s.align === "right" ? w * 0.94 : w * (s.posX / 100);
+  const x = textX(s, w);
   const y = h * (s.posY / 100);
   const steps = 40;
   const maxOff = Math.min(w, h) * 0.15;
@@ -323,14 +320,10 @@ function drawEcho(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
   if (!s.text || s.bgEcho <= 0) return;
   const scale = w / designW;
   const px = s.fontSize * scale;
-  const style = s.italic ? "italic" : "normal";
   ctx.save();
-  ctx.font = `${style} ${s.weight} ${px}px "${s.font}", system-ui, sans-serif`;
-  ctx.textAlign = s.align;
-  ctx.textBaseline = "middle";
-  ctx.letterSpacing = `${s.letterSpacing * scale}px`;
+  configureTextFont(ctx, w, s);
   const text = s.uppercase ? s.text.toUpperCase() : s.text;
-  const x = s.align === "left" ? w * 0.06 : s.align === "right" ? w * 0.94 : w * (s.posX / 100);
+  const x = textX(s, w);
   const y = h * (s.posY / 100);
   const copies = Math.min(s.bgEcho, 8);
   const offset = Math.min(w, h) * 0.04;
@@ -344,4 +337,20 @@ function drawEcho(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
     }
   }
   ctx.restore();
+}
+
+// Shared text setup used by the editor's main drawText and the echo/long-shadow
+// effects so font, alignment and spacing never drift between them.
+export function textX(s: DesignState, w: number): number {
+  return s.align === "left" ? w * 0.06 : s.align === "right" ? w * 0.94 : w * (s.posX / 100);
+}
+
+export function configureTextFont(ctx: CanvasRenderingContext2D, w: number, s: DesignState): void {
+  const scale = w / designW;
+  const px = s.fontSize * scale;
+  const style = s.italic ? "italic" : "normal";
+  ctx.font = `${style} ${s.weight} ${px}px "${s.font}", system-ui, sans-serif`;
+  ctx.textAlign = s.align;
+  ctx.textBaseline = "middle";
+  ctx.letterSpacing = `${s.letterSpacing * scale}px`;
 }

@@ -33,7 +33,13 @@ export interface DesignState {
   textShadow: boolean;
   shadowBlur: number;
   shadowOpacity: number;
+  shadowColor: string;
   textGlow: boolean;
+
+  textOpacity: number;
+  textOutline: boolean;
+  textOutlineWidth: number;
+  textOutlineColor: string;
 
   transparent: boolean;
   bgGradient: boolean;
@@ -42,6 +48,9 @@ export interface DesignState {
   bgColor2: string;
   bgGradientAngle: number;
   cornerRadius: number;
+
+  exportFormat: "png" | "jpeg" | "webp";
+  exportQuality: number;
 
   pattern: PatternName;
   patternColor: string;
@@ -53,6 +62,7 @@ export interface DesignState {
   bgImageX: number;
   bgImageY: number;
   bgImageRotation: number;
+  bgImageFit: "cover" | "contain" | "stretch" | "tile";
   bgBlur: number;
   bgChromatic: number;
   bgWaveAmount: number;
@@ -130,7 +140,13 @@ export function createDefaultState(): DesignState {
     textShadow: false,
     shadowBlur: 40,
     shadowOpacity: 0.6,
+    shadowColor: "#000000",
     textGlow: false,
+
+    textOpacity: 1,
+    textOutline: false,
+    textOutlineWidth: 4,
+    textOutlineColor: "#000000",
 
     transparent: false,
     bgGradient: true,
@@ -139,6 +155,9 @@ export function createDefaultState(): DesignState {
     bgColor2: "#1b1b3a",
     bgGradientAngle: 135,
     cornerRadius: 0,
+
+    exportFormat: "png",
+    exportQuality: 0.92,
 
     pattern: "None",
     patternColor: "#ffffff",
@@ -150,6 +169,7 @@ export function createDefaultState(): DesignState {
     bgImageX: 50,
     bgImageY: 50,
     bgImageRotation: 0,
+    bgImageFit: "cover",
     bgBlur: 0,
     bgChromatic: 0,
     bgWaveAmount: 0,

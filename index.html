@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
     <title>Lumina — Generate covers images</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
@@ -21,7 +22,7 @@
         </div>
       </div>
       <div class="topbar-right">
-        <button id="exportPng" class="btn primary">Export PNG</button>
+        <button id="exportTop" class="btn primary">Export</button>
       </div>
     </header>
 
@@ -58,275 +59,337 @@
 
         <!-- Typography -->
         <div class="group">
-          <h2>TYPOGRAPHY</h2>
-          <label>TEXT
-            <textarea id="text" rows="2" placeholder="Your title (use Enter for line breaks)"></textarea>
-          </label>
-          <label class="row">
-            <span>Uppercase</span>
-            <input id="uppercase" type="checkbox" />
-            <span>Italic</span>
-            <input id="italic" type="checkbox" />
-          </label>
-          <label>FONT FAMILY
-            <select id="font"></select>
-          </label>
-          <label class="inline">IMPORT FONT FROM DEVICE
-            <input id="fontFile" type="file" accept=".ttf,.otf,.woff,.woff2" />
-          </label>
-          <label>FONT SIZE <span class="val" id="fontSizeVal">220px</span>
-            <input id="fontSize" type="range" min="40" max="500" step="1" value="220" />
-          </label>
-          <label class="inline">UNIT
-            <select id="fontSizeUnit">
-              <option value="px">px</option>
-              <option value="pct">% (of height)</option>
-            </select>
-          </label>
-          <label>WEIGHT <span class="val" id="weightVal">700</span>
-            <div class="slider-row">
-              <input id="weight" type="range" min="400" max="900" step="100" value="700" />
-              <select id="weightUnit">
-                <option value="weight">wght</option>
-                <option value="px">px</option>
-              </select>
-            </div>
-          </label>
-          <label>LETTER SPACING <span class="val" id="spacingVal">4px</span>
-            <div class="slider-row">
-              <input id="spacing" type="range" min="-10" max="40" step="1" value="4" />
-              <select id="letterSpacingUnit">
+          <h2 class="group-head">TYPOGRAPHY <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <label>TEXT
+              <textarea id="text" rows="2" placeholder="Your title (use Enter for line breaks)"></textarea>
+            </label>
+            <label class="row">
+              <span>Uppercase</span>
+              <input id="uppercase" type="checkbox" />
+              <span>Italic</span>
+              <input id="italic" type="checkbox" />
+            </label>
+            <label>FONT FAMILY
+              <select id="font"></select>
+            </label>
+            <label class="inline">IMPORT FONT FROM DEVICE
+              <input id="fontFile" type="file" accept=".ttf,.otf,.woff,.woff2" />
+            </label>
+            <label>FONT SIZE <span class="val" id="fontSizeVal">220px</span>
+              <input id="fontSize" type="range" min="40" max="500" step="1" value="220" />
+            </label>
+            <label class="inline">UNIT
+              <select id="fontSizeUnit">
                 <option value="px">px</option>
                 <option value="pct">% (of height)</option>
               </select>
-            </div>
-          </label>
-          <label>LINE HEIGHT <span class="val" id="lineHeightVal">1.2</span>
-            <div class="slider-row">
-              <input id="lineHeight" type="range" min="0.6" max="3" step="0.1" value="1.2" />
-              <select id="lineHeightUnit">
-                <option value="ratio">ratio</option>
-                <option value="px">px</option>
-              </select>
-            </div>
-          </label>
-          <label>POSITION X <span class="val" id="posXVal">50%</span>
-            <div class="slider-row">
-              <input id="posX" type="range" min="0" max="100" step="1" value="50" />
-              <select id="posXUnit">
-                <option value="pct">% (of width)</option>
-                <option value="px">px</option>
-              </select>
-            </div>
-          </label>
-          <label>POSITION Y <span class="val" id="posYVal">50%</span>
-            <div class="slider-row">
-              <input id="posY" type="range" min="0" max="100" step="1" value="50" />
-              <select id="posYUnit">
-                <option value="pct">% (of height)</option>
-                <option value="px">px</option>
-              </select>
-            </div>
-          </label>
-          <label>TEXT ROTATION <span class="val" id="textRotationVal">0°</span>
-            <input id="textRotation" type="range" min="-90" max="90" step="1" value="0" />
-          </label>
-          <label>ALIGN
-            <div class="btn-group" id="alignGroup">
-              <button class="btn toggle" data-val="left">LEFT</button>
-              <button class="btn toggle active" data-val="center">CENTER</button>
-              <button class="btn toggle" data-val="right">RIGHT</button>
-            </div>
-          </label>
+            </label>
+            <label>WEIGHT <span class="val" id="weightVal">700</span>
+              <div class="slider-row">
+                <input id="weight" type="range" min="400" max="900" step="100" value="700" />
+                <select id="weightUnit">
+                  <option value="weight">wght</option>
+                  <option value="px">px</option>
+                </select>
+              </div>
+            </label>
+            <label>LETTER SPACING <span class="val" id="spacingVal">4px</span>
+              <div class="slider-row">
+                <input id="spacing" type="range" min="-10" max="40" step="1" value="4" />
+                <select id="letterSpacingUnit">
+                  <option value="px">px</option>
+                  <option value="pct">% (of height)</option>
+                </select>
+              </div>
+            </label>
+            <label>LINE HEIGHT <span class="val" id="lineHeightVal">1.2</span>
+              <div class="slider-row">
+                <input id="lineHeight" type="range" min="0.6" max="3" step="0.1" value="1.2" />
+                <select id="lineHeightUnit">
+                  <option value="ratio">ratio</option>
+                  <option value="px">px</option>
+                </select>
+              </div>
+            </label>
+            <label>POSITION X <span class="val" id="posXVal">50%</span>
+              <div class="slider-row">
+                <input id="posX" type="range" min="0" max="100" step="1" value="50" />
+                <select id="posXUnit">
+                  <option value="pct">% (of width)</option>
+                  <option value="px">px</option>
+                </select>
+              </div>
+            </label>
+            <label>POSITION Y <span class="val" id="posYVal">50%</span>
+              <div class="slider-row">
+                <input id="posY" type="range" min="0" max="100" step="1" value="50" />
+                <select id="posYUnit">
+                  <option value="pct">% (of height)</option>
+                  <option value="px">px</option>
+                </select>
+              </div>
+            </label>
+            <label>TEXT ROTATION <span class="val" id="textRotationVal">0°</span>
+              <input id="textRotation" type="range" min="-90" max="90" step="1" value="0" />
+            </label>
+            <label>ALIGN
+              <div class="btn-group" id="alignGroup">
+                <button class="btn toggle" data-val="left">LEFT</button>
+                <button class="btn toggle active" data-val="center">CENTER</button>
+                <button class="btn toggle" data-val="right">RIGHT</button>
+              </div>
+            </label>
+          </div>
         </div>
 
-        <!-- Text Color & Effects -->
+        <!-- Text Style & Effects -->
         <div class="group">
-          <h2>TEXT COLOR & EFFECTS</h2>
-          <label class="inline">
-            <span>Use gradient</span>
-            <input id="textGradient" type="checkbox" />
-          </label>
-          <label class="inline">COLOR A
-            <input id="textColor" type="color" value="#ffffff" />
-          </label>
-          <label class="inline">COLOR B
-            <input id="textColor2" type="color" value="#9aa0ff" />
-          </label>
-          <label>ANGLE <span class="val" id="textGradientAngleVal">135°</span>
-            <input id="textGradientAngle" type="range" min="0" max="360" step="1" value="135" />
-          </label>
-          <label class="inline">
-            <span>Transparent text (cutout)</span>
-            <input id="transparentText" type="checkbox" />
-          </label>
-          <h2>SHADOW</h2>
-          <label class="inline">
-            <span>Enable shadow</span>
-            <input id="textShadow" type="checkbox" />
-          </label>
-          <label>SHADOW BLUR <span class="val" id="shadowBlurVal">40px</span>
-            <input id="shadowBlur" type="range" min="0" max="120" step="1" value="40" />
-          </label>
-          <label>SHADOW OPACITY <span class="val" id="shadowOpacityVal">0.60</span>
-            <input id="shadowOpacity" type="range" min="0" max="1" step="0.05" value="0.6" />
-          </label>
-          <h2>GLOW EFFECT</h2>
-          <label class="inline">
-            <span>Enable glow</span>
-            <input id="textGlow" type="checkbox" />
-          </label>
+          <h2 class="group-head">TEXT STYLE & EFFECTS <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <h3>COLOR</h3>
+            <label class="inline">
+              <span>Use gradient</span>
+              <input id="textGradient" type="checkbox" />
+            </label>
+            <label class="inline">COLOR A
+              <input id="textColor" type="color" value="#ffffff" />
+            </label>
+            <label class="inline">COLOR B
+              <input id="textColor2" type="color" value="#9aa0ff" />
+            </label>
+            <label>ANGLE <span class="val" id="textGradientAngleVal">135°</span>
+              <input id="textGradientAngle" type="range" min="0" max="360" step="1" value="135" />
+            </label>
+            <label>OPACITY <span class="val" id="textOpacityVal">1.00</span>
+              <input id="textOpacity" type="range" min="0" max="1" step="0.01" value="1" />
+            </label>
+            <label class="inline">
+              <span>Transparent text (cutout)</span>
+              <input id="transparentText" type="checkbox" />
+            </label>
+            <h3>OUTLINE</h3>
+            <label class="inline">
+              <span>Enable outline</span>
+              <input id="textOutline" type="checkbox" />
+            </label>
+            <label>OUTLINE WIDTH <span class="val" id="textOutlineWidthVal">4px</span>
+              <input id="textOutlineWidth" type="range" min="1" max="40" step="1" value="4" />
+            </label>
+            <label class="inline">OUTLINE COLOR
+              <input id="textOutlineColor" type="color" value="#000000" />
+            </label>
+            <h3>SHADOW</h3>
+            <label class="inline">
+              <span>Enable shadow</span>
+              <input id="textShadow" type="checkbox" />
+            </label>
+            <label class="inline">SHADOW COLOR
+              <input id="shadowColor" type="color" value="#000000" />
+            </label>
+            <label>SHADOW BLUR <span class="val" id="shadowBlurVal">40px</span>
+              <input id="shadowBlur" type="range" min="0" max="120" step="1" value="40" />
+            </label>
+            <label>SHADOW OPACITY <span class="val" id="shadowOpacityVal">0.60</span>
+              <input id="shadowOpacity" type="range" min="0" max="1" step="0.05" value="0.6" />
+            </label>
+            <h3>GLOW</h3>
+            <label class="inline">
+              <span>Enable glow</span>
+              <input id="textGlow" type="checkbox" />
+            </label>
+          </div>
         </div>
 
         <!-- Background -->
         <div class="group">
-          <h2>BACKGROUND</h2>
-          <label class="inline">
-            <span>Transparent background (PNG alpha)</span>
-            <input id="transparent" type="checkbox" />
-          </label>
-          <label class="inline">
-            <span>Use gradient</span>
-            <input id="bgGradient" type="checkbox" checked />
-          </label>
-          <label class="inline">COLOR A
-            <input id="bgColor" type="color" value="#0b0b12" />
-          </label>
-          <label class="inline">COLOR B
-            <input id="bgColor2" type="color" value="#1b1b3a" />
-          </label>
-          <label>ANGLE <span class="val" id="bgGradientAngleVal">135°</span>
-            <input id="bgGradientAngle" type="range" min="0" max="360" step="1" value="135" />
-          </label>
-          <label>GRADIENT OPACITY <span class="val" id="bgGradientOpacityVal">0.45</span>
-            <input id="bgGradientOpacity" type="range" min="0" max="1" step="0.01" value="0.45" />
-          </label>
-          <label>BACKGROUND IMAGE
-            <input id="bgImageFile" type="file" accept="image/*" />
-          </label>
-          <label>IMAGE OPACITY <span class="val" id="bgImageOpacityVal">0.60</span>
-            <input id="bgImageOpacity" type="range" min="0" max="1" step="0.05" value="0.6" />
-          </label>
-          <label>IMAGE X <span class="val" id="bgImageXVal">50%</span>
-            <input id="bgImageX" type="range" min="0" max="100" step="1" value="50" />
-          </label>
-          <label>IMAGE Y <span class="val" id="bgImageYVal">50%</span>
-            <input id="bgImageY" type="range" min="0" max="100" step="1" value="50" />
-          </label>
-          <label>IMAGE ROTATION <span class="val" id="bgImageRotationVal">0°</span>
-            <input id="bgImageRotation" type="range" min="-90" max="90" step="1" value="0" />
-          </label>
-          <h2>BACKGROUND EFFECTS</h2>
-          <label>GAUSSIAN BLUR <span class="val" id="bgBlurVal">0px</span>
-            <input id="bgBlur" type="range" min="0" max="50" step="1" value="0" />
-          </label>
-          <label>CHROMATIC ABERRATION <span class="val" id="bgChromaticVal">0px</span>
-            <input id="bgChromatic" type="range" min="0" max="30" step="1" value="0" />
-          </label>
-          <label>WAVE AMOUNT <span class="val" id="bgWaveAmountVal">0px</span>
-            <input id="bgWaveAmount" type="range" min="0" max="30" step="1" value="0" />
-          </label>
-          <label>WAVE FREQUENCY <span class="val" id="bgWaveFrequencyVal">4</span>
-            <input id="bgWaveFrequency" type="range" min="1" max="12" step="1" value="4" />
-          </label>
-          <label>GLITCH / DATAMOSH <span class="val" id="bgGlitchVal">0%</span>
-            <input id="bgGlitch" type="range" min="0" max="100" step="1" value="0" />
-          </label>
-          <label>FILM NOISE / GRAIN <span class="val" id="bgFilmGrainVal">0%</span>
-            <input id="bgFilmGrain" type="range" min="0" max="100" step="1" value="0" />
-          </label>
-          <label class="inline">
-            <span>Halftone dots</span>
-            <input id="bgHalftone" type="checkbox" />
-          </label>
-          <label>VIGNETTE <span class="val" id="bgVignetteVal">0%</span>
-            <input id="bgVignette" type="range" min="0" max="100" step="1" value="0" />
-          </label>
-          <label class="inline">
-            <span>Pixelate / mosaic</span>
-            <input id="bgPixelate" type="checkbox" />
-          </label>
-          <label class="inline">DUOTONE / GRADIENT MAP <span class="val" id="duotoneIntensityVal">0%</span>
-            <input id="duotoneIntensity" type="range" min="0" max="100" step="1" value="0" />
-          </label>
-          <label class="inline">DUOTONE SHADOW
-            <input id="duotoneColorA" type="color" value="#0b0b12" />
-          </label>
-          <label class="inline">DUOTONE HIGHLIGHT
-            <input id="duotoneColorB" type="color" value="#9aa0ff" />
-          </label>
-          <label class="inline">DUOTONE MODE
-            <select id="bgDuotone">
-              <option value="0">Gradient map (smooth)</option>
-              <option value="1">Twin (2-tone)</option>
-            </select>
-          </label>
-          <label>BLOOM / GLOW <span class="val" id="bgBloomVal">0%</span>
-            <input id="bgBloom" type="range" min="0" max="100" step="1" value="0" />
-          </label>
-          <label class="inline">
-            <span>Long shadow (text echo)</span>
-            <input id="bgLongShadow" type="checkbox" />
-          </label>
-          <label>ECHO COPIES <span class="val" id="bgEchoVal">0</span>
-            <input id="bgEcho" type="range" min="0" max="8" step="1" value="0" />
-          </label>
-          <h2>BORDER GLOW</h2>
-          <label class="inline">
-            <span>Enable border glow</span>
-            <input id="borderGlow" type="checkbox" />
-          </label>
+          <h2 class="group-head">BACKGROUND <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <label class="inline">
+              <span>Transparent background (PNG alpha)</span>
+              <input id="transparent" type="checkbox" />
+            </label>
+            <label class="inline">
+              <span>Use gradient</span>
+              <input id="bgGradient" type="checkbox" checked />
+            </label>
+            <label class="inline">COLOR A
+              <input id="bgColor" type="color" value="#0b0b12" />
+            </label>
+            <label class="inline">COLOR B
+              <input id="bgColor2" type="color" value="#1b1b3a" />
+            </label>
+            <label>ANGLE <span class="val" id="bgGradientAngleVal">135°</span>
+              <input id="bgGradientAngle" type="range" min="0" max="360" step="1" value="135" />
+            </label>
+            <label>GRADIENT OPACITY <span class="val" id="bgGradientOpacityVal">0.45</span>
+              <input id="bgGradientOpacity" type="range" min="0" max="1" step="0.01" value="0.45" />
+            </label>
+            <h3>BACKGROUND IMAGE</h3>
+            <label>IMAGE
+              <input id="bgImageFile" type="file" accept="image/*" />
+            </label>
+            <label>FIT
+              <select id="bgImageFit">
+                <option value="cover">Cover</option>
+                <option value="contain">Contain</option>
+                <option value="stretch">Stretch</option>
+                <option value="tile">Tile</option>
+              </select>
+            </label>
+            <label>IMAGE OPACITY <span class="val" id="bgImageOpacityVal">0.60</span>
+              <input id="bgImageOpacity" type="range" min="0" max="1" step="0.05" value="0.6" />
+            </label>
+            <label>IMAGE X <span class="val" id="bgImageXVal">50%</span>
+              <input id="bgImageX" type="range" min="0" max="100" step="1" value="50" />
+            </label>
+            <label>IMAGE Y <span class="val" id="bgImageYVal">50%</span>
+              <input id="bgImageY" type="range" min="0" max="100" step="1" value="50" />
+            </label>
+            <label>IMAGE ROTATION <span class="val" id="bgImageRotationVal">0°</span>
+              <input id="bgImageRotation" type="range" min="-90" max="90" step="1" value="0" />
+            </label>
+          </div>
         </div>
 
-        <!-- Glass Overlay -->
+        <!-- Background Effects -->
         <div class="group">
-          <h2>GLASS OVERLAY</h2>
-          <label class="inline">
-            <span>Enable glass panel</span>
-            <input id="glassPanel" type="checkbox" />
-          </label>
+          <h2 class="group-head">BACKGROUND EFFECTS <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <label>GAUSSIAN BLUR <span class="val" id="bgBlurVal">0px</span>
+              <input id="bgBlur" type="range" min="0" max="50" step="1" value="0" />
+            </label>
+            <label>CHROMATIC ABERRATION <span class="val" id="bgChromaticVal">0px</span>
+              <input id="bgChromatic" type="range" min="0" max="30" step="1" value="0" />
+            </label>
+            <label>WAVE AMOUNT <span class="val" id="bgWaveAmountVal">0px</span>
+              <input id="bgWaveAmount" type="range" min="0" max="30" step="1" value="0" />
+            </label>
+            <label>WAVE FREQUENCY <span class="val" id="bgWaveFrequencyVal">4</span>
+              <input id="bgWaveFrequency" type="range" min="1" max="12" step="1" value="4" />
+            </label>
+            <label>GLITCH / DATAMOSH <span class="val" id="bgGlitchVal">0%</span>
+              <input id="bgGlitch" type="range" min="0" max="100" step="1" value="0" />
+            </label>
+            <label>FILM NOISE / GRAIN <span class="val" id="bgFilmGrainVal">0%</span>
+              <input id="bgFilmGrain" type="range" min="0" max="100" step="1" value="0" />
+            </label>
+            <label class="inline">
+              <span>Halftone dots</span>
+              <input id="bgHalftone" type="checkbox" />
+            </label>
+            <label>VIGNETTE <span class="val" id="bgVignetteVal">0%</span>
+              <input id="bgVignette" type="range" min="0" max="100" step="1" value="0" />
+            </label>
+            <label class="inline">
+              <span>Pixelate / mosaic</span>
+              <input id="bgPixelate" type="checkbox" />
+            </label>
+            <label>DUOTONE / GRADIENT MAP <span class="val" id="duotoneIntensityVal">0%</span>
+              <input id="duotoneIntensity" type="range" min="0" max="100" step="1" value="0" />
+            </label>
+            <label class="inline">DUOTONE SHADOW
+              <input id="duotoneColorA" type="color" value="#0b0b12" />
+            </label>
+            <label class="inline">DUOTONE HIGHLIGHT
+              <input id="duotoneColorB" type="color" value="#9aa0ff" />
+            </label>
+            <label class="inline">DUOTONE MODE
+              <select id="bgDuotone">
+                <option value="0">Gradient map (smooth)</option>
+                <option value="1">Twin (2-tone)</option>
+              </select>
+            </label>
+            <label>BLOOM / GLOW <span class="val" id="bgBloomVal">0%</span>
+              <input id="bgBloom" type="range" min="0" max="100" step="1" value="0" />
+            </label>
+            <label class="inline">
+              <span>Long shadow (text echo)</span>
+              <input id="bgLongShadow" type="checkbox" />
+            </label>
+            <label>ECHO COPIES <span class="val" id="bgEchoVal">0</span>
+              <input id="bgEcho" type="range" min="0" max="8" step="1" value="0" />
+            </label>
+            <label class="inline">
+              <span>Border glow</span>
+              <input id="borderGlow" type="checkbox" />
+            </label>
+          </div>
         </div>
 
         <!-- Overlay Pattern -->
         <div class="group">
-          <h2>OVERLAY PATTERN</h2>
-          <label>PATTERN
-            <select id="pattern"></select>
-          </label>
-          <label class="inline">PATTERN COLOR
-            <input id="patternColor" type="color" value="#ffffff" />
-          </label>
+          <h2 class="group-head">OVERLAY PATTERN <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <label>PATTERN
+              <select id="pattern"></select>
+            </label>
+            <label class="inline">PATTERN COLOR
+              <input id="patternColor" type="color" value="#ffffff" />
+            </label>
+            <label class="inline">
+              <span>Enable glass panel</span>
+              <input id="glassPanel" type="checkbox" />
+            </label>
+          </div>
         </div>
 
-        <!-- Corners -->
+        <!-- Frame -->
         <div class="group">
-          <h2>ROUNDED CORNERS</h2>
-          <label>CORNER RADIOUS <span class="val" id="cornerRadiusVal">0px</span>
-            <input id="cornerRadius" type="range" min="0" max="300" step="1" value="0" />
-          </label>
+          <h2 class="group-head">FRAME & CORNERS <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <label>CORNER RADIUS <span class="val" id="cornerRadiusVal">0px</span>
+              <input id="cornerRadius" type="range" min="0" max="600" step="1" value="0" />
+            </label>
+          </div>
         </div>
 
         <!-- Layers -->
         <div class="group">
-          <h2>LAYERS</h2>
-          <label class="inline"><input id="layerBackground" type="checkbox" checked /> Background</label>
-          <label class="inline"><input id="layerPattern" type="checkbox" checked /> Pattern</label>
-          <label class="inline"><input id="layerText" type="checkbox" checked /> Text</label>
+          <h2 class="group-head">LAYERS <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <label class="inline"><input id="layerBackground" type="checkbox" checked /> Background</label>
+            <label class="inline"><input id="layerPattern" type="checkbox" checked /> Pattern</label>
+            <label class="inline"><input id="layerText" type="checkbox" checked /> Text</label>
+          </div>
+        </div>
+
+        <!-- Export -->
+        <div class="group">
+          <h2 class="group-head">EXPORT <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <label>FORMAT
+              <select id="exportFormat">
+                <option value="png">PNG</option>
+                <option value="jpeg">JPEG</option>
+                <option value="webp">WebP</option>
+              </select>
+            </label>
+            <label>QUALITY <span class="val" id="exportQualityVal">0.92</span>
+              <input id="exportQuality" type="range" min="0.1" max="1" step="0.01" value="0.92" />
+            </label>
+            <div class="row">
+              <button id="exportPng" class="btn primary">Export</button>
+              <button id="copyClip" class="btn">Copy</button>
+            </div>
+          </div>
         </div>
 
         <!-- History -->
         <div class="group">
-          <h2>HISTORY</h2>
-          <div class="row">
-            <button id="undo" class="btn">Undo</button>
-            <button id="redo" class="btn">Redo</button>
+          <h2 class="group-head">HISTORY <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <div class="row">
+              <button id="undo" class="btn">Undo</button>
+              <button id="redo" class="btn">Redo</button>
+            </div>
           </div>
         </div>
       </aside>
     </main>
 
     <footer class="footer">
-      © 2026 LUMINA · BY <a href="https://buycoffee.to/trk88pl" target="_blank">TRK88PL</a> v1.10.0
+      © 2026 LUMINA · BY <a href="https://buycoffee.to/trk88pl" target="_blank">TRK88PL</a> v1.11.0
     </footer>
 
     <script type="module" src="/src/main.ts"></script>
