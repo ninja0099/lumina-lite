@@ -37,9 +37,128 @@ function angleGradient(
   return g;
 }
 
+// animationPhase in [0,1): drives periodic motion. time Q is an integer so the
+// loop is perfectly seamless (phase 0 and phase 1 are identical).
+let animationPhase = 0;
+let stateRef: DesignState | null = null;
+function getStateRef(): DesignState | null {
+  return stateRef;
+}
+
+function nodeOffset(
+  _n: DesignState["meshNodes"][number],
+  i: number,
+  style: DesignState["meshAnimStyle"],
+  amp: number,
+  phase: number,
+): { dx: number; dy: number; scale: number } {
+  if (amp <= 0) return { dx: 0, dy: 0, scale: 1 };
+  const a = (phase * Math.PI * 2) + (i * Math.PI * 2) / 7;
+  const r = amp / 100;
+  switch (style) {
+    case "orbit":
+      return { dx: Math.cos(a) * r, dy: Math.sin(a) * r, scale: 1 };
+    case "breathe":
+      return { dx: 0, dy: 0, scale: 1 + Math.sin(a) * r };
+    case "wave":
+      return { dx: Math.sin(a) * r, dy: Math.cos(a * 0.5) * r * 0.5, scale: 1 };
+    case "float":
+    default:
+      return { dx: Math.sin(a) * r, dy: Math.cos(a * 1.3) * r, scale: 1 };
+  }
+}
+
+function paintMesh(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  s: DesignState,
+  phase: number,
+): void {
+  ctx.fillStyle = s.bgColor;
+  ctx.fillRect(0, 0, w, h);
+
+  const off = document.createElement("canvas");
+  off.width = w;
+  off.height = h;
+  const octx = off.getContext("2d")!;
+  const min = Math.min(w, h);
+
+  s.meshNodes.forEach((n, i) => {
+    const { dx, dy, scale } = s.meshAnim
+      ? nodeOffset(n, i, s.meshAnimStyle, s.meshAnimAmplitude, phase)
+      : { dx: 0, dy: 0, scale: 1 };
+    const cx = (n.x / 100 + dx) * w;
+    const cy = (n.y / 100 + dy) * h;
+    const R = (n.radius / 100) * min * (s.meshSpread / 5) * scale;
+    const g = octx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(1, R));
+    g.addColorStop(0, n.color);
+    g.addColorStop(1, hexWithAlpha(n.color, 0));
+    octx.fillStyle = g;
+    octx.fillRect(0, 0, w, h);
+  });
+
+  ctx.save();
+  ctx.filter = s.meshBlur > 0 ? `blur(${s.meshBlur}px)` : "none";
+  ctx.drawImage(off, 0, 0);
+  ctx.filter = "none";
+  ctx.restore();
+
+  if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
+    applyBackgroundEffects(ctx, w, h, s);
+  }
+}
+
+let selectedNode = -1;
+export function getSelectedNode(): number {
+  return selectedNode;
+}
+export function setSelectedNode(i: number): void {
+  selectedNode = i;
+}
+
+// Returns index of node under canvas pixel (px,py), or -1.
+export function nodeAt(px: number, py: number, w: number, h: number): number {
+  const s = getStateRef();
+  if (!s || s.bgMode !== "mesh") return -1;
+  let best = -1;
+  let bestD = 9999;
+  s.meshNodes.forEach((n, i) => {
+    const cx = (n.x / 100) * w;
+    const cy = (n.y / 100) * h;
+    const d = Math.hypot(px - cx, py - cy);
+    if (d < Math.max(14, (n.radius / 100) * Math.min(w, h) * (s.meshSpread / 5) * 0.4) && d < bestD) {
+      best = i;
+      bestD = d;
+    }
+  });
+  return best;
+}
+
+function drawNodeHandles(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  s: DesignState,
+): void {
+  ctx.save();
+  ctx.lineWidth = 2;
+  s.meshNodes.forEach((n, i) => {
+    const cx = (n.x / 100) * w;
+    const cy = (n.y / 100) * h;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+    ctx.fillStyle = n.color;
+    ctx.fill();
+    ctx.strokeStyle = i === selectedNode ? "#fff" : "rgba(255,255,255,0.65)";
+    ctx.lineWidth = i === selectedNode ? 3 : 2;
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
   ctx.clearRect(0, 0, w, h);
-
   if (s.layers.background && bgImg && !s.transparent) {
     const cx = w * (s.bgImageX / 100);
     const cy = h * (s.bgImageY / 100);
@@ -85,17 +204,21 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
       ctx.restore();
     }
   } else if (s.layers.background && !s.transparent) {
-    ctx.fillStyle = s.bgColor;
-    ctx.fillRect(0, 0, w, h);
-    if (s.bgGradient) {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, Math.min(1, s.bgGradientOpacity));
-      ctx.fillStyle = angleGradient(ctx, w, h, s.bgGradientAngle, s.bgColor, s.bgColor2);
+    if (s.bgMode === "mesh") {
+      paintMesh(ctx, w, h, s, animationPhase);
+    } else {
+      ctx.fillStyle = s.bgColor;
       ctx.fillRect(0, 0, w, h);
-      ctx.restore();
-    }
-    if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
-      applyBackgroundEffects(ctx, w, h, s);
+      if (s.bgGradient) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, s.bgGradientOpacity));
+        ctx.fillStyle = angleGradient(ctx, w, h, s.bgGradientAngle, s.bgColor, s.bgColor2);
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
+      if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
+        applyBackgroundEffects(ctx, w, h, s);
+      }
     }
   }
 
@@ -281,6 +404,7 @@ function hexWithAlpha(hex: string, a: number): string {
 // --- Public API ---
 
 export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignState) {
+  stateRef = getState();
   const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
   let PW = 960;
   let PH = 540;
@@ -304,7 +428,17 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
   function render(): void {
     rafId = 0;
     const state = getState();
+    if (state.bgMode === "mesh" && state.meshAnim) {
+      animationPhase = ((performance.now() / 1000) % state.meshAnimDuration) /
+        state.meshAnimDuration;
+      paint(ctx, canvas.width, canvas.height, state);
+      drawNodeHandles(ctx, canvas.width, canvas.height, state);
+      // keep looping while animation is active
+      rafId = requestAnimationFrame(() => render());
+      return;
+    }
     paint(ctx, canvas.width, canvas.height, state);
+    if (state.bgMode === "mesh") drawNodeHandles(ctx, canvas.width, canvas.height, state);
     if (!warmedFonts.has(state.font)) {
       warmedFonts.add(state.font);
       ensureFont(state.font, state.weight).then(() => {
@@ -356,10 +490,95 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     }
   }
 
+  // Render one animation frame deterministically at phase t in [0,1).
+  function paintFrame(t: number): HTMLCanvasElement {
+    const s = getState();
+    const out = document.createElement("canvas");
+    out.width = exportW;
+    out.height = exportH;
+    const octx = out.getContext("2d")!;
+    if (s.bgMode === "mesh" && s.transparent) {
+      // transparent mesh: paint nodes only over clear canvas
+      const prev = animationPhase;
+      animationPhase = t;
+      paintMesh(octx, exportW, exportH, s, t);
+      animationPhase = prev;
+    } else {
+      animationPhase = t;
+      paint(octx, exportW, exportH, s);
+    }
+    return out;
+  }
+
+  async function exportAnimation(format: "mp4" | "gif", fps = 25): Promise<void> {
+    const s = getState();
+    const dur = s.meshAnimDuration;
+    const frames = Math.max(4, Math.round(fps * dur));
+    if (format === "gif") {
+      const { GIFEncoder, quantize, applyPalette } = await import("gifenc");
+      const gif = GIFEncoder();
+      const delay = Math.round(1000 / fps);
+      for (let i = 0; i < frames; i++) {
+        const c = paintFrame(i / frames);
+        const data = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+        const palette = quantize(data, 256);
+        const index = applyPalette(data, palette);
+        gif.writeFrame(index, c.width, c.height, { palette, delay, repeat: 0 });
+      }
+      gif.finish();
+      const bytes = gif.bytes();
+      const buf = new Uint8Array(bytes); // copy into a concrete ArrayBuffer-backed view
+      const blob = new Blob([buf], { type: "image/gif" });
+      downloadBlob(blob, "lumina-lite.gif");
+      return;
+    }
+    // MP4 via WebCodecs
+    if (typeof VideoEncoder === "undefined") {
+      throw new Error("MP4 export requires a browser with WebCodecs (recent Chrome/Edge/Safari).");
+    }
+    const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
+    const muxer = new Muxer({
+      target: new ArrayBufferTarget(),
+      video: { codec: "avc", width: exportW, height: exportH, frameRate: fps },
+      fastStart: "in-memory",
+    });
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => console.error("VideoEncoder error", e),
+    });
+    encoder.configure({
+      codec: "avc1.640033",
+      width: exportW,
+      height: exportH,
+      bitrate: 8_000_000,
+      framerate: fps,
+    });
+    for (let i = 0; i < frames; i++) {
+      const c = paintFrame(i / frames);
+      const frame = new VideoFrame(c, { timestamp: (i * 1_000_000) / fps, duration: (1_000_000) / fps });
+      encoder.encode(frame, { keyFrame: i % fps === 0 });
+      frame.close();
+    }
+    await encoder.flush();
+    muxer.finalize();
+    const { buffer } = muxer.target;
+    downloadBlob(new Blob([buffer], { type: "video/mp4" }), "lumina-lite.mp4");
+  }
+
+  function downloadBlob(blob: Blob, name: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
   return {
     scheduleDraw,
     exportImage,
     copyToClipboard,
+    exportAnimation,
     getExportSize(): { w: number; h: number } {
       return { w: exportW, h: exportH };
     },

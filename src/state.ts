@@ -5,6 +5,17 @@ export type Align = "left" | "center" | "right";
 
 export type LayerKey = "background" | "pattern" | "text";
 
+export type BgMode = "linear" | "mesh";
+
+export interface MeshNode {
+  x: number; // center x, percent of width (0-100)
+  y: number; // center y, percent of height (0-100)
+  color: string;
+  radius: number; // blob radius, percent of min(w,h)
+}
+
+export type MeshAnimStyle = "float" | "orbit" | "breathe" | "wave";
+
 export interface DesignState {
   text: string;
   uppercase: boolean;
@@ -48,6 +59,16 @@ export interface DesignState {
   bgColor2: string;
   bgGradientAngle: number;
   cornerRadius: number;
+
+  bgMode: BgMode;
+  meshNodes: MeshNode[];
+  meshSpread: number;
+  meshBlur: number;
+  meshAnim: boolean;
+  meshAnimStyle: MeshAnimStyle;
+  meshAnimSpeed: number;
+  meshAnimAmplitude: number;
+  meshAnimDuration: number;
 
   exportFormat: "png" | "jpeg" | "webp";
 
@@ -154,6 +175,20 @@ export function createDefaultState(): DesignState {
     bgColor2: "#1b1b3a",
     bgGradientAngle: 135,
     cornerRadius: 0,
+
+    bgMode: "linear",
+    meshNodes: [
+      { x: 25, y: 30, color: "#7a0d0d", radius: 60 },
+      { x: 80, y: 25, color: "#1b1b3a", radius: 60 },
+      { x: 55, y: 80, color: "#9aa0ff", radius: 60 },
+    ],
+    meshSpread: 5,
+    meshBlur: 30,
+    meshAnim: false,
+    meshAnimStyle: "float",
+    meshAnimSpeed: 1,
+    meshAnimAmplitude: 15,
+    meshAnimDuration: 6,
 
     exportFormat: "png",
 

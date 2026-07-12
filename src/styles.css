@@ -261,3 +261,17 @@ input[type=file] { font-size: 12px; color: var(--muted); }
 }
 .footer a { color: var(--accent); text-decoration: none; }
 .footer a:hover { text-decoration: underline; }
+
+.hidden { display: none !important; }
+.seg { display: inline-flex; gap: 4px; }
+.seg-btn {
+  padding: 4px 10px; font-size: 11px; border: 1px solid var(--border);
+  background: var(--panel); color: var(--muted); border-radius: 4px; cursor: pointer;
+}
+.seg-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.mini-btn {
+  padding: 2px 8px; font-size: 11px; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text); border-radius: 4px; cursor: pointer; margin-left: 6px;
+}
+.mini-btn:hover { border-color: var(--accent); }
+.hint { font-size: 11px; color: var(--muted); margin: 6px 0 0; }

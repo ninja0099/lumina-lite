@@ -209,22 +209,76 @@
               <span>Transparent background (PNG alpha)</span>
               <input id="transparent" type="checkbox" />
             </label>
-            <label class="inline">
-              <span>Use gradient</span>
-              <input id="bgGradient" type="checkbox" checked />
+            <label>BG MODE
+              <span class="seg">
+                <button id="bgModeLinear" class="seg-btn active" data-mode="linear">Linear</button>
+                <button id="bgModeMesh" class="seg-btn" data-mode="mesh">Mesh</button>
+              </span>
             </label>
-            <label class="inline">COLOR A
-              <input id="bgColor" type="color" value="#0b0b12" />
-            </label>
-            <label class="inline">COLOR B
-              <input id="bgColor2" type="color" value="#1b1b3a" />
-            </label>
-            <label>ANGLE <span class="val" id="bgGradientAngleVal">135°</span>
-              <input id="bgGradientAngle" type="range" min="0" max="360" step="1" value="135" />
-            </label>
-            <label>GRADIENT OPACITY <span class="val" id="bgGradientOpacityVal">0.45</span>
-              <input id="bgGradientOpacity" type="range" min="0" max="1" step="0.01" value="0.45" />
-            </label>
+            <div id="linearBg">
+              <label class="inline">
+                <span>Use gradient</span>
+                <input id="bgGradient" type="checkbox" checked />
+              </label>
+              <label class="inline">COLOR A
+                <input id="bgColor" type="color" value="#0b0b12" />
+              </label>
+              <label class="inline">COLOR B
+                <input id="bgColor2" type="color" value="#1b1b3a" />
+              </label>
+              <label>ANGLE <span class="val" id="bgGradientAngleVal">135°</span>
+                <input id="bgGradientAngle" type="range" min="0" max="360" step="1" value="135" />
+              </label>
+              <label>GRADIENT OPACITY <span class="val" id="bgGradientOpacityVal">0.45</span>
+                <input id="bgGradientOpacity" type="range" min="0" max="1" step="0.01" value="0.45" />
+              </label>
+            </div>
+            <div id="meshBg" class="hidden">
+              <label class="inline">BASE COLOR
+                <input id="bgColor" type="color" value="#0b0b12" />
+              </label>
+              <label>NODES <span class="val" id="meshCountVal">3</span>
+                <button id="meshAdd" class="mini-btn">+ Add</button>
+                <button id="meshDel" class="mini-btn">− Remove</button>
+              </label>
+              <label class="inline">SELECTED NODE COLOR
+                <input id="meshNodeColor" type="color" value="#7a0d0d" />
+              </label>
+              <label>NODE RADIUS <span class="val" id="meshNodeRadiusVal">60%</span>
+                <input id="meshNodeRadius" type="range" min="10" max="150" step="1" value="60" />
+              </label>
+              <label class="inline">
+                <span>Spread (blob size)</span>
+                <input id="meshSpread" type="range" min="1" max="6" step="1" value="5" />
+              </label>
+              <label>BLUR <span class="val" id="meshBlurVal">30px</span>
+                <input id="meshBlur" type="range" min="0" max="60" step="1" value="30" />
+              </label>
+              <label class="inline">
+                <span>Animate</span>
+                <input id="meshAnim" type="checkbox" />
+              </label>
+              <div id="meshAnimControls" class="hidden">
+                <label>STYLE
+                  <select id="meshAnimStyle">
+                    <option value="float">Float</option>
+                    <option value="orbit">Orbit</option>
+                    <option value="breathe">Breathe</option>
+                    <option value="wave">Wave</option>
+                  </select>
+                </label>
+                <label>SPEED <span class="val" id="meshAnimSpeedVal">1</span>
+                  <input id="meshAnimSpeed" type="range" min="0.1" max="3" step="0.1" value="1" />
+                </label>
+                <label>AMPLITUDE <span class="val" id="meshAnimAmplitudeVal">15%</span>
+                  <input id="meshAnimAmplitude" type="range" min="0" max="40" step="1" value="15" />
+                </label>
+                <label>DURATION (s) <span class="val" id="meshAnimDurationVal">6</span>
+                  <input id="meshAnimDuration" type="range" min="2" max="20" step="1" value="6" />
+                </label>
+              </div>
+              <p class="hint">Drag nodes directly on the canvas.</p>
+            </div>
             <h3>BACKGROUND IMAGE</h3>
             <label>IMAGE
               <input id="bgImageFile" type="file" accept="image/*" />
@@ -376,6 +430,10 @@
             <div class="row">
               <button id="exportPng" class="btn primary">Export</button>
               <button id="copyClip" class="btn">Copy</button>
+            </div>
+            <div class="row">
+              <button id="exportMp4" class="btn">Export MP4</button>
+              <button id="exportGif" class="btn">Export GIF</button>
             </div>
           </div>
         </div>

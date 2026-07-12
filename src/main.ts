@@ -8,7 +8,7 @@ import {
   type LayerKey,
 } from "./state";
 import { PRESETS } from "./presets";
-import { createEditor, setBgImage } from "./editor";
+import { createEditor, setBgImage, getSelectedNode, setSelectedNode, nodeAt } from "./editor";
 
 const state = createDefaultState();
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
@@ -49,6 +49,13 @@ const binders: Binder[] = [
   { id: "bgGradientAngle", apply: (s, v) => (s.bgGradientAngle = Number(v)) },
   { id: "bgGradientOpacity", apply: (s, v) => (s.bgGradientOpacity = Number(v)) },
   { id: "cornerRadius", apply: (s, v) => (s.cornerRadius = Number(v)) },
+  { id: "meshSpread", apply: (s, v) => (s.meshSpread = Number(v)) },
+  { id: "meshBlur", apply: (s, v) => (s.meshBlur = Number(v)) },
+  { id: "meshAnim", apply: (s, v) => (s.meshAnim = Boolean(v)) },
+  { id: "meshAnimStyle", apply: (s, v) => (s.meshAnimStyle = v as DesignState["meshAnimStyle"]) },
+  { id: "meshAnimSpeed", apply: (s, v) => (s.meshAnimSpeed = Number(v)) },
+  { id: "meshAnimAmplitude", apply: (s, v) => (s.meshAnimAmplitude = Number(v)) },
+  { id: "meshAnimDuration", apply: (s, v) => (s.meshAnimDuration = Number(v)) },
   { id: "borderGlow", apply: (s, v) => (s.borderGlow = Boolean(v)) },
   { id: "glassPanel", apply: (s, v) => (s.glassPanel = Boolean(v)) },
   { id: "pattern", apply: (s, v) => (s.pattern = v as DesignState["pattern"]) },
@@ -471,6 +478,8 @@ function syncInputsFromState() {
   for (const k of ["background", "pattern", "text"] as LayerKey[]) {
     ($(`layer${k[0].toUpperCase()}${k.slice(1)}`) as HTMLInputElement).checked = state.layers[k];
   }
+  setSelectedNode(-1);
+  syncMeshUI();
 }
 
 // Layer toggles
@@ -574,12 +583,133 @@ function flash(btn: HTMLButtonElement, msg: string): void {
   setTimeout(() => (btn.textContent = old), 1200);
 }
 
+// --- Mesh gradient mode ---
+const bgModeLinear = $("bgModeLinear");
+const bgModeMesh = $("bgModeMesh");
+const linearBg = $("linearBg");
+const meshBg = $("meshBg");
+const meshAnimControls = $("meshAnimControls");
+const meshNodeColor = $("meshNodeColor") as HTMLInputElement;
+const meshNodeRadius = $("meshNodeRadius") as HTMLInputElement;
+
+function syncMeshUI(): void {
+  const mesh = state.bgMode === "mesh";
+  bgModeLinear.classList.toggle("active", !mesh);
+  bgModeMesh.classList.toggle("active", mesh);
+  linearBg.classList.toggle("hidden", mesh);
+  meshBg.classList.toggle("hidden", !mesh);
+  meshAnimControls.classList.toggle("hidden", !state.meshAnim);
+  $("meshCountVal").textContent = String(state.meshNodes.length);
+  const sel = getSelectedNode();
+  const node = state.meshNodes[sel];
+  if (node) {
+    meshNodeColor.value = node.color;
+    meshNodeRadius.value = String(node.radius);
+    $("meshNodeRadiusVal").textContent = `${node.radius}%`;
+  }
+}
+
+function selectNode(i: number): void {
+  setSelectedNode(i);
+  syncMeshUI();
+}
+
+bgModeLinear.addEventListener("click", () => { state.bgMode = "linear"; syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
+bgModeMesh.addEventListener("click", () => { state.bgMode = "mesh"; syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
+
+$("meshAdd").addEventListener("click", () => {
+  const hue = Math.round(Math.random() * 360);
+  const color = "#" + [hue, 70, 55].map((v, i) =>
+    Math.round((i === 0 ? v / 360 : v / 100) * 255).toString(16).padStart(2, "0")).join("");
+  state.meshNodes.push({
+    x: 20 + Math.random() * 60,
+    y: 20 + Math.random() * 60,
+    color,
+    radius: 60,
+  });
+  selectNode(state.meshNodes.length - 1);
+  pushHistory();
+  editor.scheduleDraw();
+});
+
+$("meshDel").addEventListener("click", () => {
+  const sel = getSelectedNode();
+  if (state.meshNodes.length <= 1) return;
+  state.meshNodes.splice(sel, 1);
+  selectNode(Math.max(0, sel - 1));
+  pushHistory();
+  editor.scheduleDraw();
+});
+
+meshNodeColor.addEventListener("input", () => {
+  const sel = getSelectedNode();
+  if (state.meshNodes[sel]) { state.meshNodes[sel].color = meshNodeColor.value; pushHistory(); editor.scheduleDraw(); }
+});
+meshNodeRadius.addEventListener("input", () => {
+  const sel = getSelectedNode();
+  if (state.meshNodes[sel]) {
+    state.meshNodes[sel].radius = Number(meshNodeRadius.value);
+    $("meshNodeRadiusVal").textContent = `${meshNodeRadius.value}%`;
+    pushHistory();
+    editor.scheduleDraw();
+  }
+});
+$("meshAnim").addEventListener("change", () => { syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
+
+// Drag nodes on the canvas
+function canvasPoint(e: PointerEvent): { x: number; y: number } {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: ((e.clientX - rect.left) / rect.width) * canvas.width,
+    y: ((e.clientY - rect.top) / rect.height) * canvas.height,
+  };
+}
+canvas.addEventListener("pointerdown", (e) => {
+  if (state.bgMode !== "mesh") return;
+  const p = canvasPoint(e);
+  const hit = nodeAt(p.x, p.y, canvas.width, canvas.height);
+  if (hit >= 0) {
+    selectNode(hit);
+    canvas.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => {
+      const q = canvasPoint(ev);
+      const node = state.meshNodes[getSelectedNode()];
+      node.x = Math.max(0, Math.min(100, (q.x / canvas.width) * 100));
+      node.y = Math.max(0, Math.min(100, (q.y / canvas.height) * 100));
+      editor.scheduleDraw();
+    };
+    const up = () => {
+      canvas.removeEventListener("pointermove", move);
+      canvas.removeEventListener("pointerup", up);
+      pushHistory();
+    };
+    canvas.addEventListener("pointermove", move);
+    canvas.addEventListener("pointerup", up);
+  }
+});
+
+// --- Export handlers ---
 $("exportPng").addEventListener("click", () => editor.exportImage());
 $("exportTop").addEventListener("click", () => editor.exportImage());
 $("copyClip").addEventListener("click", async () => {
   const btn = $("copyClip") as HTMLButtonElement;
   const ok = await editor.copyToClipboard();
   flash(btn, ok ? "Copied!" : "Failed");
+});
+
+$("exportMp4").addEventListener("click", async () => {
+  const btn = $("exportMp4") as HTMLButtonElement;
+  btn.disabled = true;
+  try { await editor.exportAnimation("mp4"); }
+  catch (err) { alert((err as Error).message); }
+  finally { btn.disabled = false; }
+});
+$("exportGif").addEventListener("click", async () => {
+  const btn = $("exportGif") as HTMLButtonElement;
+  btn.disabled = true;
+  try { await editor.exportAnimation("gif"); }
+  catch (err) { alert((err as Error).message); }
+  finally { btn.disabled = false; }
 });
 
 // Collapsible groups
