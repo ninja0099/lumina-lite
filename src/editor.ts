@@ -494,13 +494,16 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     startLoop();
   }
 
-  function exportImage(): void {
+  function exportImage(phase = 0): void {
     const s = getState();
     const out = document.createElement("canvas");
     out.width = exportW;
     out.height = exportH;
     const octx = out.getContext("2d")!;
+    const prev = animationPhase;
+    animationPhase = phase;
     paint(octx, exportW, exportH, s);
+    animationPhase = prev;
     const mime =
       s.exportFormat === "jpeg" ? "image/jpeg" : s.exportFormat === "webp" ? "image/webp" : "image/png";
     const url = out.toDataURL(mime);
@@ -510,13 +513,16 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     a.click();
   }
 
-  async function copyToClipboard(): Promise<boolean> {
+  async function copyToClipboard(phase = 0): Promise<boolean> {
     const s = getState();
     const out = document.createElement("canvas");
     out.width = exportW;
     out.height = exportH;
     const octx = out.getContext("2d")!;
+    const prev = animationPhase;
+    animationPhase = phase;
     paint(octx, exportW, exportH, s);
+    animationPhase = prev;
     const mime =
       s.exportFormat === "jpeg" ? "image/jpeg" : s.exportFormat === "webp" ? "image/webp" : "image/png";
     try {
