@@ -13,9 +13,17 @@ import { createEditor, setBgImage } from "./editor";
 const state = createDefaultState();
 
 // Restore previous session before anything initializes the history baseline.
+const SAVE_TTL_MS = 24 * 60 * 60 * 1000;
 try {
   const raw = localStorage.getItem("lumina-lite-state");
-  if (raw) Object.assign(state, JSON.parse(raw));
+  if (raw) {
+    const saved = JSON.parse(raw) as { t?: number; state?: unknown };
+    if (saved.t && Date.now() - saved.t < SAVE_TTL_MS && saved.state) {
+      Object.assign(state, saved.state);
+    } else {
+      localStorage.removeItem("lumina-lite-state");
+    }
+  }
 } catch { /* ignore corrupt */ }
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -597,7 +605,7 @@ window.addEventListener("keydown", (e) => {
 
 // Persist modified state on every history commit.
 function saveState(): void {
-  try { localStorage.setItem("lumina-lite-state", JSON.stringify(state)); } catch { /* ignore quota */ }
+  try { localStorage.setItem("lumina-lite-state", JSON.stringify({ t: Date.now(), state })); } catch { /* ignore quota */ }
 }
 window.addEventListener("beforeunload", saveState);
 
