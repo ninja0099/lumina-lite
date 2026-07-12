@@ -342,7 +342,7 @@ function drawEcho(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
 // Shared text setup used by the editor's main drawText and the echo/long-shadow
 // effects so font, alignment and spacing never drift between them.
 export function textX(s: DesignState, w: number): number {
-  return s.align === "left" ? w * 0.06 : s.align === "right" ? w * 0.94 : w * (s.posX / 100);
+  return w * (s.posX / 100);
 }
 
 export function configureTextFont(ctx: CanvasRenderingContext2D, w: number, s: DesignState): void {
