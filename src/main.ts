@@ -754,10 +754,14 @@ function runExportMp4(): void {
 
 $("exportMp4").addEventListener("click", () => runExportMp4());
 
-// Collapsible groups
+// Collapsible groups (collapsed by default)
 document.querySelectorAll<HTMLElement>(".group-head").forEach((head) => {
+  const body = head.nextElementSibling as HTMLElement | null;
+  if (body) {
+    body.classList.add("collapsed");
+    head.querySelector(".chev")!.textContent = "▸";
+  }
   head.addEventListener("click", () => {
-    const body = head.nextElementSibling as HTMLElement | null;
     if (!body) return;
     const collapsed = body.classList.toggle("collapsed");
     head.querySelector(".chev")!.textContent = collapsed ? "▸" : "▾";

@@ -22,6 +22,7 @@
         </div>
       </div>
       <div class="topbar-right">
+        <button id="reset" class="btn ghost">Reset</button>
         <button id="exportTop" class="btn primary">Export</button>
       </div>
     </header>
@@ -52,9 +53,20 @@
       <aside class="panel">
         <!-- Presets -->
         <div class="group">
-          <h2>PRESETS (<span id="presetCount">20</span>)</h2>
-          <div id="presets" class="preset-grid"></div>
-          <button id="reset" class="btn ghost">RESET</button>
+          <h2 class="group-head">PRESETS (<span id="presetCount">20</span>) <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <div id="presets" class="preset-grid"></div>
+          </div>
+        </div>
+
+        <!-- Layers -->
+        <div class="group">
+          <h2 class="group-head">LAYERS <span class="chev">▾</span></h2>
+          <div class="group-body">
+            <label class="inline"><input id="layerBackground" type="checkbox" checked /> Background</label>
+            <label class="inline"><input id="layerPattern" type="checkbox" checked /> Pattern</label>
+            <label class="inline"><input id="layerText" type="checkbox" checked /> Text</label>
+          </div>
         </div>
 
         <!-- Typography -->
@@ -395,16 +407,6 @@
             <label>CORNER RADIUS <span class="val" id="cornerRadiusVal">0px</span>
               <input id="cornerRadius" type="range" min="0" max="600" step="1" value="0" />
             </label>
-          </div>
-        </div>
-
-        <!-- Layers -->
-        <div class="group">
-          <h2 class="group-head">LAYERS <span class="chev">▾</span></h2>
-          <div class="group-body">
-            <label class="inline"><input id="layerBackground" type="checkbox" checked /> Background</label>
-            <label class="inline"><input id="layerPattern" type="checkbox" checked /> Pattern</label>
-            <label class="inline"><input id="layerText" type="checkbox" checked /> Text</label>
           </div>
         </div>
 
