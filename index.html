@@ -25,6 +25,12 @@
         </div>
       </div>
       <div class="topbar-right">
+        <button id="undo" class="btn icon" aria-label="Undo" title="Undo (Ctrl+Z)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+        </button>
+        <button id="redo" class="btn icon" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
+        </button>
         <button id="reset" class="btn ghost">Reset</button>
         <button id="exportTop" class="btn primary">Export</button>
       </div>
@@ -54,6 +60,10 @@
       </section>
 
       <aside class="panel" id="panel">
+        <div class="sheet-handle" id="sheetHandle">
+          <div class="grip"></div>
+          <button class="sheet-tab">Customize ▾</button>
+        </div>
         <nav class="group-tabs" id="groupTabs" aria-label="Settings groups"></nav>
 
         <div class="groups" id="groups">
@@ -330,17 +340,6 @@
                 <button id="exportMp4" class="btn">Export MP4</button>
               </div>
               <p class="hint" id="exportStatus"></p>
-            </div>
-          </section>
-
-          <!-- History -->
-          <section class="group" id="group-history">
-            <h2 class="group-head"><span class="group-title">History</span> <span class="chev">▾</span></h2>
-            <div class="group-body">
-              <div class="row">
-                <button id="undo" class="btn">Undo</button>
-                <button id="redo" class="btn">Redo</button>
-              </div>
             </div>
           </section>
         </div>

@@ -768,40 +768,41 @@ document.querySelectorAll<HTMLElement>(".group-head").forEach((head) => {
   });
 });
 
-// Mobile group tabs: single-group view below the canvas. Desktop accordion is untouched.
+// Mobile bottom sheet: drag handle to expand/collapse.
 const panel = $("panel") as HTMLElement;
-const tabsNav = $("groupTabs") as HTMLElement;
-const groups = Array.from(
-  document.querySelectorAll<HTMLElement>("#groups .group")
-);
-function buildGroupTabs(): void {
-  if (!groups.length) return;
-  groups.forEach((g, i) => {
-    const titleEl = g.querySelector(".group-title");
-    const btn = document.createElement("button");
-    btn.className = "tab" + (i === 0 ? " active" : "");
-    btn.textContent = (titleEl?.textContent ?? `Group ${i + 1}`).trim();
-    btn.addEventListener("click", () => selectGroup(i));
-    tabsNav.appendChild(btn);
+const handle = $("sheetHandle") as HTMLElement | null;
+
+if (handle) {
+  const mql = window.matchMedia("(max-width: 860px)");
+  let dragging = false;
+  let startY = 0;
+  let startExpanded = false;
+
+  const isExpanded = () => panel.classList.contains("expanded");
+  const setExpanded = (v: boolean) => panel.classList.toggle("expanded", v);
+
+  handle.addEventListener("pointerdown", (e: PointerEvent) => {
+    if (!mql.matches) return;
+    dragging = true;
+    startY = e.clientY;
+    startExpanded = isExpanded();
+    handle.setPointerCapture(e.pointerId);
   });
+  handle.addEventListener("pointermove", (e: PointerEvent) => {
+    if (!dragging) return;
+    const delta = e.clientY - startY;
+    if (delta < -30 && !startExpanded) setExpanded(true);
+    if (delta > 30 && startExpanded) setExpanded(false);
+  });
+  handle.addEventListener("pointerup", (e: PointerEvent) => {
+    if (!dragging) return;
+    dragging = false;
+    if (Math.abs(e.clientY - startY) < 8) setExpanded(!startExpanded);
+  });
+  handle.addEventListener("pointercancel", () => { dragging = false; });
+
+  mql.addEventListener("change", (e) => { if (!e.matches) setExpanded(false); });
 }
-function selectGroup(i: number): void {
-  groups.forEach((g, j) => g.classList.toggle("is-active", j === i));
-  tabsNav.querySelectorAll(".tab").forEach((t, j) =>
-    t.classList.toggle("active", j === i)
-  );
-}
-function syncMobileMode(mq: { matches: boolean }): void {
-  const mobile = mq.matches;
-  panel.classList.toggle("mobile", mobile);
-  if (mobile) {
-    if (!tabsNav.childElementCount) buildGroupTabs();
-    selectGroup(0);
-  }
-}
-const mobileMQ = window.matchMedia("(max-width: 860px)");
-syncMobileMode(mobileMQ);
-mobileMQ.addEventListener("change", (e) => syncMobileMode(e));
 
 // Keyboard shortcuts: Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z (or Y) redo
 window.addEventListener("keydown", (e) => {
