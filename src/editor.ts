@@ -330,7 +330,7 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     paint(octx, exportW, exportH, s);
     const mime =
       s.exportFormat === "jpeg" ? "image/jpeg" : s.exportFormat === "webp" ? "image/webp" : "image/png";
-    const url = out.toDataURL(mime, s.exportFormat === "png" ? undefined : s.exportQuality);
+    const url = out.toDataURL(mime);
     const a = document.createElement("a");
     a.href = url;
     a.download = `lumina-lite.${s.exportFormat === "jpeg" ? "jpg" : s.exportFormat}`;
@@ -347,7 +347,7 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     const mime =
       s.exportFormat === "jpeg" ? "image/jpeg" : s.exportFormat === "webp" ? "image/webp" : "image/png";
     try {
-      const blob: Blob | null = await new Promise((res) => out.toBlob(res, mime, s.exportFormat === "png" ? undefined : s.exportQuality));
+      const blob: Blob | null = await new Promise((res) => out.toBlob(res, mime));
       if (!blob) return false;
       await navigator.clipboard.write([new ClipboardItem({ [mime]: blob })]);
       return true;

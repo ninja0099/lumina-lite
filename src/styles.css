@@ -165,6 +165,14 @@ label.row { display: flex; align-items: center; gap: 14px; }
   font-size: 12px;
 }
 .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+.res-inputs { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.res-inputs input[type=number] {
+  flex: 1; min-width: 0; width: 100%;
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px; font: inherit;
+}
+.res-x { color: var(--muted); flex: 0 0 auto; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; margin: 6px 0 0; }
 

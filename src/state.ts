@@ -50,7 +50,6 @@ export interface DesignState {
   cornerRadius: number;
 
   exportFormat: "png" | "jpeg" | "webp";
-  exportQuality: number;
 
   pattern: PatternName;
   patternColor: string;
@@ -157,7 +156,6 @@ export function createDefaultState(): DesignState {
     cornerRadius: 0,
 
     exportFormat: "png",
-    exportQuality: 0.92,
 
     pattern: "None",
     patternColor: "#ffffff",

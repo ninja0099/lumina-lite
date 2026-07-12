@@ -81,7 +81,6 @@ const binders: Binder[] = [
   { id: "duotoneColorB", apply: (s, v) => (s.duotoneColorB = String(v)) },
   { id: "duotoneIntensity", apply: (s, v) => (s.duotoneIntensity = Number(v)) },
   { id: "exportFormat", apply: (s, v) => (s.exportFormat = String(v) as DesignState["exportFormat"]) },
-  { id: "exportQuality", apply: (s, v) => (s.exportQuality = Number(v)) },
 ];
 
 function readValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) {
@@ -126,7 +125,6 @@ const labels: [string, string][] = [
   ["shadowOpacity", "shadowOpacityVal"],
   ["textOpacity", "textOpacityVal"],
   ["textOutlineWidth", "textOutlineWidthVal"],
-  ["exportQuality", "exportQualityVal"],
   ["bgImageOpacity", "bgImageOpacityVal"],
   ["bgImageX", "bgImageXVal"],
   ["bgImageY", "bgImageYVal"],
@@ -345,22 +343,46 @@ const ASPECTS: Record<string, { w: number; h: number }> = {
   "9:16": { w: 1080, h: 1920 },
   "2:3": { w: 1080, h: 1620 },
 };
+const resW = $("resW") as HTMLInputElement;
+const resH = $("resH") as HTMLInputElement;
+
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+function applyResolution(w: number, h: number, label?: string): void {
+  $("exportW").textContent = String(w);
+  $("exportH").textContent = String(h);
+  const g = gcd(w, h) || 1;
+  $("aspectLabel").textContent = label ?? `${w / g}:${h / g}`;
+  resW.value = String(w);
+  resH.value = String(h);
+  editor.setAspectRatio(w, h);
+  if (state.fontSizeUnit === "pct") configureFontSizeSlider();
+  reconfigureAllUnitSliders();
+  pushHistory();
+  editor.scheduleDraw();
+}
+
 aspectBtns.forEach((btn) => {
   btn.addEventListener("click", () => {
     aspectBtns.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     const ratio = btn.dataset.ratio!;
     const asp = ASPECTS[ratio];
-    $("exportW").textContent = String(asp.w);
-    $("exportH").textContent = String(asp.h);
-    $("aspectLabel").textContent = ratio;
-    editor.setAspectRatio(asp.w, asp.h);
-    if (state.fontSizeUnit === "pct") configureFontSizeSlider();
-    reconfigureAllUnitSliders();
-    pushHistory();
-    editor.scheduleDraw();
+    applyResolution(asp.w, asp.h, ratio);
   });
 });
+
+function commitResolution(): void {
+  const w = Math.round(Math.max(16, Math.min(8000, Number(resW.value) || 0)));
+  const h = Math.round(Math.max(16, Math.min(8000, Number(resH.value) || 0)));
+  aspectBtns.forEach((b) => b.classList.remove("active"));
+  applyResolution(w, h);
+}
+
+resW.addEventListener("change", commitResolution);
+resH.addEventListener("change", commitResolution);
 
 // Zoom controls
 const wrap = $("canvasWrap");
