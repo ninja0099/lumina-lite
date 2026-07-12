@@ -252,16 +252,6 @@ textarea, select {
 .row .btn { flex: 1; }
 input[type=file] { font-size: 12px; color: var(--muted); }
 
-.footer {
-  text-align: center;
-  padding: 16px;
-  color: var(--muted);
-  font-size: 12px;
-  border-top: 1px solid var(--border);
-}
-.footer a { color: var(--accent); text-decoration: none; }
-.footer a:hover { text-decoration: underline; }
-
 .hidden { display: none !important; }
 .seg { display: inline-flex; gap: 4px; }
 .seg-btn {
