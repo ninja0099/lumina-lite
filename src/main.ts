@@ -351,6 +351,7 @@ function applyResolution(w: number, h: number, label?: string): void {
   $("aspectLabel").textContent = label ?? `${w / g}:${h / g}`;
   resW.value = String(w);
   resH.value = String(h);
+  if (lockRatio) lockRatio = w / h;
   editor.setAspectRatio(w, h);
   if (state.fontSizeUnit === "pct") configureFontSizeSlider();
   reconfigureAllUnitSliders();
@@ -368,15 +369,27 @@ aspectBtns.forEach((btn) => {
   });
 });
 
-function commitResolution(): void {
-  const w = Math.round(Math.max(16, Math.min(8000, Number(resW.value) || 0)));
-  const h = Math.round(Math.max(16, Math.min(8000, Number(resH.value) || 0)));
+const resLock = $("resLock") as HTMLInputElement;
+let lockRatio = 1920 / 1080;
+const clampRes = (v: number) => Math.round(Math.max(16, Math.min(8000, v || 0)));
+
+resLock.addEventListener("change", () => {
+  if (resLock.checked) lockRatio = (Number(resW.value) || 1) / (Number(resH.value) || 1);
+});
+
+function commitResolution(edited: "w" | "h"): void {
+  let w = clampRes(Number(resW.value));
+  let h = clampRes(Number(resH.value));
+  if (resLock.checked) {
+    if (edited === "w") h = clampRes(w / lockRatio);
+    else w = clampRes(h * lockRatio);
+  }
   aspectBtns.forEach((b) => b.classList.remove("active"));
   applyResolution(w, h);
 }
 
-resW.addEventListener("change", commitResolution);
-resH.addEventListener("change", commitResolution);
+resW.addEventListener("change", () => commitResolution("w"));
+resH.addEventListener("change", () => commitResolution("h"));
 
 // Zoom controls
 const wrap = $("canvasWrap");
