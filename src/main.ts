@@ -768,6 +768,41 @@ document.querySelectorAll<HTMLElement>(".group-head").forEach((head) => {
   });
 });
 
+// Mobile group tabs: single-group view below the canvas. Desktop accordion is untouched.
+const panel = $("panel") as HTMLElement;
+const tabsNav = $("groupTabs") as HTMLElement;
+const groups = Array.from(
+  document.querySelectorAll<HTMLElement>("#groups .group")
+);
+function buildGroupTabs(): void {
+  if (!groups.length) return;
+  groups.forEach((g, i) => {
+    const titleEl = g.querySelector(".group-title");
+    const btn = document.createElement("button");
+    btn.className = "tab" + (i === 0 ? " active" : "");
+    btn.textContent = (titleEl?.textContent ?? `Group ${i + 1}`).trim();
+    btn.addEventListener("click", () => selectGroup(i));
+    tabsNav.appendChild(btn);
+  });
+}
+function selectGroup(i: number): void {
+  groups.forEach((g, j) => g.classList.toggle("is-active", j === i));
+  tabsNav.querySelectorAll(".tab").forEach((t, j) =>
+    t.classList.toggle("active", j === i)
+  );
+}
+function syncMobileMode(mq: { matches: boolean }): void {
+  const mobile = mq.matches;
+  panel.classList.toggle("mobile", mobile);
+  if (mobile) {
+    if (!tabsNav.childElementCount) buildGroupTabs();
+    selectGroup(0);
+  }
+}
+const mobileMQ = window.matchMedia("(max-width: 860px)");
+syncMobileMode(mobileMQ);
+mobileMQ.addEventListener("change", (e) => syncMobileMode(e));
+
 // Keyboard shortcuts: Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z (or Y) redo
 window.addEventListener("keydown", (e) => {
   const mod = e.ctrlKey || e.metaKey;
