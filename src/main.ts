@@ -119,8 +119,9 @@ for (const b of binders) {
   }
 }
 
-// Live value labels
-const labels: [string, string][] = [
+// Live value labels. Optional formatter formats the raw slider value.
+type LabelRow = [string, string] | [string, string, (v: string) => string];
+const labels: LabelRow[] = [
   ["textRotation", "textRotationVal"],
   ["shadowBlur", "shadowBlurVal"],
   ["shadowOpacity", "shadowOpacityVal"],
@@ -142,11 +143,18 @@ const labels: [string, string][] = [
   ["duotoneIntensity", "duotoneIntensityVal"],
   ["bgGradientOpacity", "bgGradientOpacityVal"],
   ["cornerRadius", "cornerRadiusVal"],
+  ["meshBlur", "meshBlurVal", (v) => `${v}px`],
+  ["meshAnimSpeed", "meshAnimSpeedVal"],
+  ["meshAnimAmplitude", "meshAnimAmplitudeVal", (v) => `${v}%`],
+  ["meshAnimDuration", "meshAnimDurationVal"],
 ];
-for (const [input, label] of labels) {
+for (const row of labels) {
+  const [input, label, fmt] = row;
   const el = $<HTMLInputElement>(input);
   const out = $(label);
-  el.addEventListener("input", () => (out.textContent = el.value));
+  const set = () => (out.textContent = fmt ? fmt(el.value) : el.value);
+  el.addEventListener("input", set);
+  set();
 }
 
 // Font size: stored as px internally (stable for presets/export). The
@@ -634,6 +642,7 @@ $("meshAdd").addEventListener("click", () => {
 
 $("meshDel").addEventListener("click", () => {
   const sel = getSelectedNode();
+  if (sel < 0 || sel >= state.meshNodes.length) return;
   if (state.meshNodes.length <= 1) return;
   state.meshNodes.splice(sel, 1);
   selectNode(Math.max(0, sel - 1));
@@ -697,20 +706,27 @@ $("copyClip").addEventListener("click", async () => {
   flash(btn, ok ? "Copied!" : "Failed");
 });
 
-$("exportMp4").addEventListener("click", async () => {
+function runExportMp4(): void {
   const btn = $("exportMp4") as HTMLButtonElement;
+  const status = $("exportStatus");
   btn.disabled = true;
-  try { await editor.exportAnimation("mp4"); }
-  catch (err) { alert((err as Error).message); }
-  finally { btn.disabled = false; }
-});
-$("exportGif").addEventListener("click", async () => {
-  const btn = $("exportGif") as HTMLButtonElement;
-  btn.disabled = true;
-  try { await editor.exportAnimation("gif"); }
-  catch (err) { alert((err as Error).message); }
-  finally { btn.disabled = false; }
-});
+  status.textContent = "Exporting…";
+  const onProgress = (done: number, total: number, phase: string) => {
+    status.textContent = `${phase} ${done}/${total}`;
+  };
+  editor
+    .exportAnimation(25, onProgress)
+    .then(() => (status.textContent = "Done — file downloaded."))
+    .catch((err) => {
+      status.textContent = (err as Error).message;
+      alert((err as Error).message);
+    })
+    .finally(() => {
+      btn.disabled = false;
+    });
+}
+
+$("exportMp4").addEventListener("click", () => runExportMp4());
 
 // Collapsible groups
 document.querySelectorAll<HTMLElement>(".group-head").forEach((head) => {

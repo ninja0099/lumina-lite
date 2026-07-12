@@ -108,7 +108,11 @@ function paintMesh(
   });
 
   ctx.save();
-  ctx.filter = s.meshBlur > 0 ? `blur(${s.meshBlur}px)` : "none";
+  // The preview canvas is half the export width (exportW/2). Blur is in px, so
+  // to make the export look identical to the preview we scale blur up with the
+  // canvas: a given fraction of a 1920 frame needs 2x the px of a 960 frame.
+  const blurPx = s.meshBlur * 2 * (w / exportW);
+  ctx.filter = blurPx > 0 ? `blur(${blurPx}px)` : "none";
   ctx.drawImage(off, 0, 0);
   ctx.filter = "none";
   ctx.restore();
@@ -519,28 +523,15 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     return out;
   }
 
-  async function exportAnimation(format: "mp4" | "gif", fps = 25): Promise<void> {
+  async function exportAnimation(
+    fps = 25,
+    onProgress?: (done: number, total: number, phase: string) => void,
+  ): Promise<void> {
     const s = getState();
     const dur = s.meshAnimDuration;
     const frames = Math.max(4, Math.round(fps * dur));
-    if (format === "gif") {
-      const { GIFEncoder, quantize, applyPalette } = await import("gifenc");
-      const gif = GIFEncoder();
-      const delay = Math.round(1000 / fps);
-      for (let i = 0; i < frames; i++) {
-        const c = paintFrame(i / frames);
-        const data = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
-        const palette = quantize(data, 256);
-        const index = applyPalette(data, palette);
-        gif.writeFrame(index, c.width, c.height, { palette, delay, repeat: 0 });
-      }
-      gif.finish();
-      const bytes = gif.bytes();
-      const buf = new Uint8Array(bytes); // copy into a concrete ArrayBuffer-backed view
-      const blob = new Blob([buf], { type: "image/gif" });
-      downloadBlob(blob, "lumina-lite.gif");
-      return;
-    }
+    if (onProgress) onProgress(0, frames, "Rendering frames");
+
     // MP4 via WebCodecs
     if (typeof VideoEncoder === "undefined") {
       throw new Error("MP4 export requires a browser with WebCodecs (recent Chrome/Edge/Safari).");
@@ -562,11 +553,13 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
       bitrate: 8_000_000,
       framerate: fps,
     });
+    let frame: VideoFrame;
     for (let i = 0; i < frames; i++) {
       const c = paintFrame(i / frames);
-      const frame = new VideoFrame(c, { timestamp: (i * 1_000_000) / fps, duration: (1_000_000) / fps });
+      frame = new VideoFrame(c, { timestamp: (i * 1_000_000) / fps, duration: (1_000_000) / fps });
       encoder.encode(frame, { keyFrame: i % fps === 0 });
       frame.close();
+      if (onProgress) onProgress(i + 1, frames, "Encoding");
     }
     await encoder.flush();
     muxer.finalize();
