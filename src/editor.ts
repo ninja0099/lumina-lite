@@ -37,12 +37,18 @@ function angleGradient(
   return g;
 }
 
-// animationPhase in [0,1): drives periodic motion. time Q is an integer so the
-// loop is perfectly seamless (phase 0 and phase 1 are identical).
+// animationPhase in [0,1): drives one seamless loop. Every style uses only
+// sin/cos of (phase * 2π * cycles), so over phase 0→1 each node completes a
+// whole number of periods — the end frame equals the start frame (no seam).
 let animationPhase = 0;
 let stateRef: DesignState | null = null;
 function getStateRef(): DesignState | null {
   return stateRef;
+}
+
+// Integer oscillations per loop, derived from speed. Integer => seamless loop.
+function cycleCount(speed: number): number {
+  return Math.max(1, Math.round(speed * 2));
 }
 
 function nodeOffset(
@@ -50,21 +56,24 @@ function nodeOffset(
   i: number,
   style: DesignState["meshAnimStyle"],
   amp: number,
+  speed: number,
   phase: number,
 ): { dx: number; dy: number; scale: number } {
   if (amp <= 0) return { dx: 0, dy: 0, scale: 1 };
-  const a = (phase * Math.PI * 2) + (i * Math.PI * 2) / 7;
+  const cycles = cycleCount(speed);
+  const a = phase * Math.PI * 2 * cycles; // whole periods per loop
+  const ph = (i * Math.PI * 2) / 7; // per-node phase offset
   const r = amp / 100;
   switch (style) {
     case "orbit":
-      return { dx: Math.cos(a) * r, dy: Math.sin(a) * r, scale: 1 };
+      return { dx: Math.cos(a + ph) * r, dy: Math.sin(a + ph) * r, scale: 1 };
     case "breathe":
-      return { dx: 0, dy: 0, scale: 1 + Math.sin(a) * r };
+      return { dx: 0, dy: 0, scale: 1 + Math.sin(a + ph) * r };
     case "wave":
-      return { dx: Math.sin(a) * r, dy: Math.cos(a * 0.5) * r * 0.5, scale: 1 };
+      return { dx: Math.sin(a + ph * 0.7) * r, dy: Math.cos(a + ph * 0.5) * r * 0.6, scale: 1 };
     case "float":
     default:
-      return { dx: Math.sin(a) * r, dy: Math.cos(a * 1.3) * r, scale: 1 };
+      return { dx: Math.sin(a + ph) * r, dy: Math.cos(a + ph * 1.3) * r, scale: 1 };
   }
 }
 
@@ -86,7 +95,7 @@ function paintMesh(
 
   s.meshNodes.forEach((n, i) => {
     const { dx, dy, scale } = s.meshAnim
-      ? nodeOffset(n, i, s.meshAnimStyle, s.meshAnimAmplitude, phase)
+      ? nodeOffset(n, i, s.meshAnimStyle, s.meshAnimAmplitude, s.meshAnimSpeed, phase)
       : { dx: 0, dy: 0, scale: 1 };
     const cx = (n.x / 100 + dx) * w;
     const cy = (n.y / 100 + dy) * h;
