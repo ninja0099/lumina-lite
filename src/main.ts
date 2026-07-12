@@ -359,7 +359,26 @@ function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
 }
 
+function syncRangeSlider(id: string, labelId: string, fmt?: (v: number) => string): void {
+  const el = $<HTMLInputElement>(id);
+  const v = (state as unknown as Record<string, number>)[id];
+  el.value = String(v);
+  const out = $(labelId);
+  if (out) out.textContent = fmt ? fmt(v) : String(v);
+}
+
+// Stored in export-px and rendered with scale = w/exportW, so each param's frame
+// fraction = value/exportW. Rescale by the width ratio on resolution change so the
+// fraction — and thus the on-screen preview size — stays "as it is".
+const EXPORT_PX_FIELDS = ["shadowBlur", "textOutlineWidth", "cornerRadius", "meshBlur"] as const;
+
 function applyResolution(w: number, h: number, label?: string): void {
+  const k = w / editor.getExportSize().w;
+  if (k !== 1) {
+    state.fontSize *= k;
+    for (const f of EXPORT_PX_FIELDS) (state as unknown as Record<string, number>)[f] *= k;
+    if (state.letterSpacingUnit === "px") state.letterSpacing *= k;
+  }
   $("exportW").textContent = String(w);
   $("exportH").textContent = String(h);
   const g = gcd(w, h) || 1;
@@ -368,8 +387,11 @@ function applyResolution(w: number, h: number, label?: string): void {
   resH.value = String(h);
   if (lockRatio) lockRatio = w / h;
   editor.setAspectRatio(w, h);
-  if (state.fontSizeUnit === "pct") configureFontSizeSlider();
+  configureFontSizeSlider();
   reconfigureAllUnitSliders();
+  for (const f of EXPORT_PX_FIELDS) {
+    syncRangeSlider(f, `${f}Val`, f === "meshBlur" ? (v) => `${v}px` : undefined);
+  }
   pushHistory();
   editor.scheduleDraw();
 }
@@ -486,7 +508,9 @@ function syncInputsFromState() {
   for (const k of ["background", "pattern", "text"] as LayerKey[]) {
     ($(`layer${k[0].toUpperCase()}${k.slice(1)}`) as HTMLInputElement).checked = state.layers[k];
   }
-  setSelectedNode(-1);
+  // keep the mesh selection across undo/preset/reset when it's still in range
+  const sel = getSelectedNode();
+  setSelectedNode(sel >= 0 && sel < state.meshNodes.length ? sel : -1);
   syncMeshUI();
 }
 
@@ -680,9 +704,11 @@ canvas.addEventListener("pointerdown", (e) => {
   if (hit >= 0) {
     selectNode(hit);
     canvas.setPointerCapture(e.pointerId);
+    const idx = hit; // freeze: a selection reset (e.g. Ctrl+Z mid-drag) must not crash move
     const move = (ev: PointerEvent) => {
+      const node = state.meshNodes[idx];
+      if (!node) return;
       const q = canvasPoint(ev);
-      const node = state.meshNodes[getSelectedNode()];
       node.x = Math.max(0, Math.min(100, (q.x / canvas.width) * 100));
       node.y = Math.max(0, Math.min(100, (q.y / canvas.height) * 100));
       editor.scheduleDraw();
