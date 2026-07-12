@@ -14,7 +14,14 @@ export interface MeshNode {
   radius: number; // blob radius, percent of min(w,h)
 }
 
-export type MeshAnimStyle = "float" | "orbit" | "breathe" | "wave";
+export type MeshAnimStyle =
+  | "float"
+  | "orbit"
+  | "breathe"
+  | "wave"
+  | "drift"
+  | "swarm"
+  | "roam";
 
 export interface DesignState {
   text: string;

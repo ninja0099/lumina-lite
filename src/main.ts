@@ -45,6 +45,7 @@ const binders: Binder[] = [
   { id: "transparent", apply: (s, v) => (s.transparent = Boolean(v)) },
   { id: "bgGradient", apply: (s, v) => (s.bgGradient = Boolean(v)) },
   { id: "bgColor", apply: (s, v) => (s.bgColor = String(v)) },
+  { id: "bgMeshColor", apply: (s, v) => (s.bgColor = String(v)) },
   { id: "bgColor2", apply: (s, v) => (s.bgColor2 = String(v)) },
   { id: "bgGradientAngle", apply: (s, v) => (s.bgGradientAngle = Number(v)) },
   { id: "bgGradientOpacity", apply: (s, v) => (s.bgGradientOpacity = Number(v)) },
@@ -451,6 +452,7 @@ document.querySelectorAll<HTMLButtonElement>(".zoom-preset").forEach((btn) => {
 // Presets
 const grid = $("presets");
 const presetEls = new Map<string, HTMLButtonElement>();
+$("presetCount").textContent = String(PRESETS.length);
 for (const p of PRESETS) {
   const btn = document.createElement("button");
   btn.className = "preset";
@@ -631,6 +633,7 @@ function syncMeshUI(): void {
   linearBg.classList.toggle("hidden", mesh);
   meshBg.classList.toggle("hidden", !mesh);
   meshAnimControls.classList.toggle("hidden", !state.meshAnim);
+  ($("bgMeshColor") as HTMLInputElement).value = state.bgColor;
   $("meshCountVal").textContent = String(state.meshNodes.length);
   const sel = getSelectedNode();
   const node = state.meshNodes[sel];
@@ -754,17 +757,25 @@ function runExportMp4(): void {
 
 $("exportMp4").addEventListener("click", () => runExportMp4());
 
-// Collapsible groups (collapsed by default)
+// Collapsible groups (collapsed by default). Heading is keyboard-operable.
 document.querySelectorAll<HTMLElement>(".group-head").forEach((head) => {
   const body = head.nextElementSibling as HTMLElement | null;
+  head.tabIndex = 0;
+  head.setAttribute("role", "button");
   if (body) {
     body.classList.add("collapsed");
+    head.setAttribute("aria-expanded", "false");
     head.querySelector(".chev")!.textContent = "▸";
   }
-  head.addEventListener("click", () => {
+  const toggle = () => {
     if (!body) return;
     const collapsed = body.classList.toggle("collapsed");
+    head.setAttribute("aria-expanded", String(!collapsed));
     head.querySelector(".chev")!.textContent = collapsed ? "▸" : "▾";
+  };
+  head.addEventListener("click", toggle);
+  head.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
   });
 });
 

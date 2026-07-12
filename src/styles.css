@@ -7,7 +7,7 @@
   --text-sec: #c0c6d0;
   --muted: #8a92a3;
   --border: #2a2f37;
-  --track: #565f6e;
+  --track: #626d7e;
   --text-head: #fefeff;
   --accent: #19e3c1;
   --accent-press: #0fb89c;
@@ -88,6 +88,16 @@ body {
 .aspect-btn:hover { color: var(--text); border-color: var(--accent); }
 .aspect-btn.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .aspect-btn:active { transform: translateY(1px); }
+.aspect-btn:focus-visible,
+.zoom-preset:focus-visible,
+.seg-btn:focus-visible,
+.preset:focus-visible,
+.mini-btn:focus-visible,
+.sheet-tab:focus-visible,
+.group-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* ---------- Layout ---------- */
 .layout {

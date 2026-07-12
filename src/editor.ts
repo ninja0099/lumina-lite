@@ -52,28 +52,54 @@ function cycleCount(speed: number): number {
 }
 
 function nodeOffset(
-  _n: DesignState["meshNodes"][number],
   i: number,
   style: DesignState["meshAnimStyle"],
   amp: number,
   speed: number,
   phase: number,
-): { dx: number; dy: number; scale: number } {
-  if (amp <= 0) return { dx: 0, dy: 0, scale: 1 };
+): { dx: number; dy: number; scale: number; alpha: number } {
+  const none = { dx: 0, dy: 0, scale: 1, alpha: 1 };
+  if (amp <= 0) return none;
   const cycles = cycleCount(speed);
   const a = phase * Math.PI * 2 * cycles; // whole periods per loop
   const ph = (i * Math.PI * 2) / 7; // per-node phase offset
   const r = amp / 100;
   switch (style) {
     case "orbit":
-      return { dx: Math.cos(a + ph) * r, dy: Math.sin(a + ph) * r, scale: 1 };
+      return { dx: Math.cos(a + ph) * r, dy: Math.sin(a + ph) * r, scale: 1, alpha: 1 };
     case "breathe":
-      return { dx: 0, dy: 0, scale: 1 + Math.sin(a + ph) * r };
+      return { dx: 0, dy: 0, scale: 1 + Math.sin(a + ph) * r, alpha: 1 };
     case "wave":
-      return { dx: Math.sin(a + ph * 0.7) * r, dy: Math.cos(a + ph * 0.5) * r * 0.6, scale: 1 };
+      return { dx: Math.sin(a + ph * 0.7) * r, dy: Math.cos(a + ph * 0.5) * r * 0.6, scale: 1, alpha: 1 };
     case "float":
+      return { dx: Math.sin(a + ph) * r, dy: Math.cos(a + ph * 1.3) * r, scale: 1, alpha: 1 };
+    // --- new styles ---
+    case "drift":
+      // Constant directional travel that wraps via sin (seamless); wind-like.
+      // dy uses cos(a) (not a*0.5) so it stays an integer multiple of `a`
+      // and the loop seam stays clean even when cycleCount() is odd.
+      return { dx: Math.sin(a) * r, dy: Math.cos(a) * r * 0.5, scale: 1, alpha: 1 };
+    case "swarm":
+      // Organic per-node wobble: each node uses a distinct pseudo-seed phase.
+      // All time terms are integer multiples of `a` so the loop stays seamless.
+      return {
+        dx: Math.sin(a * 2 + ph * 3.1) * r,
+        dy: Math.cos(a * 3 + ph * 2.3) * r,
+        scale: 1 + Math.sin(a + ph) * r * 0.3,
+        alpha: 1,
+      };
+    case "roam":
+      // Nodes JOURNEY across the canvas: a large slow sweep carries the node
+      // between regions, layered with a faster wobble. Distinct from float/
+      // swarm because the center of motion itself translates, not just orbits.
+      return {
+        dx: (Math.sin(a * 1 + ph) * 0.7 + Math.sin(a * 3 + ph * 2.1) * 0.3) * r,
+        dy: (Math.cos(a * 1 + ph * 1.3) * 0.7 + Math.cos(a * 2 + ph) * 0.3) * r,
+        scale: 1,
+        alpha: 1,
+      };
     default:
-      return { dx: Math.sin(a + ph) * r, dy: Math.cos(a + ph * 1.3) * r, scale: 1 };
+      return none;
   }
 }
 
@@ -94,14 +120,14 @@ function paintMesh(
   const min = Math.min(w, h);
 
   s.meshNodes.forEach((n, i) => {
-    const { dx, dy, scale } = s.meshAnim
-      ? nodeOffset(n, i, s.meshAnimStyle, s.meshAnimAmplitude, s.meshAnimSpeed, phase)
-      : { dx: 0, dy: 0, scale: 1 };
+    const { dx, dy, scale, alpha } = s.meshAnim
+      ? nodeOffset(i, s.meshAnimStyle, s.meshAnimAmplitude, s.meshAnimSpeed, phase)
+      : { dx: 0, dy: 0, scale: 1, alpha: 1 };
     const cx = (n.x / 100 + dx) * w;
     const cy = (n.y / 100 + dy) * h;
     const R = (n.radius / 100) * min * (s.meshSpread / 5) * scale;
     const g = octx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(1, R));
-    g.addColorStop(0, n.color);
+    g.addColorStop(0, hexWithAlpha(n.color, alpha));
     g.addColorStop(1, hexWithAlpha(n.color, 0));
     octx.fillStyle = g;
     octx.fillRect(0, 0, w, h);
@@ -443,7 +469,7 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     const state = getState();
     if (state.bgMode === "mesh" && state.meshAnim) {
       animationPhase = ((performance.now() / 1000) % state.meshAnimDuration) /
-        state.meshAnimDuration;
+        Math.max(1, state.meshAnimDuration);
       paint(ctx, canvas.width, canvas.height, state);
       drawNodeHandles(ctx, canvas.width, canvas.height, state);
       // keep looping while animation is active
