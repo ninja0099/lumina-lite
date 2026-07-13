@@ -118,7 +118,16 @@ function paintMesh(
   off.height = h;
   const octx = off.getContext("2d")!;
   const min = Math.min(w, h);
+  // Merge: every node contributes at equal weight; later nodes don't bury
+  // earlier ones. Stacked: each node paints over the previous (default 2D-canvas
+  // source-over), so array order is the z-order.
+  if (s.meshMode === "merge") octx.globalCompositeOperation = "lighter";
 
+  // Blur the blobs on the offscreen canvas (over transparency), not when
+  // compositing onto the opaque base — blurring at the canvas edge otherwise
+  // fades toward transparent and exposes a hard ring of bgColor.
+  const blurPx = s.meshBlur * 2 * (w / exportW);
+  if (blurPx > 0) octx.filter = `blur(${blurPx}px)`;
   s.meshNodes.forEach((n, i) => {
     const { dx, dy, scale, alpha } = s.meshAnim
       ? nodeOffset(i, s.meshAnimStyle, s.meshAnimAmplitude, s.meshAnimSpeed, phase)
@@ -132,16 +141,10 @@ function paintMesh(
     octx.fillStyle = g;
     octx.fillRect(0, 0, w, h);
   });
+  octx.filter = "none";
+  octx.globalCompositeOperation = "source-over";
 
-  ctx.save();
-  // The preview canvas is half the export width (exportW/2). Blur is in px, so
-  // to make the export look identical to the preview we scale blur up with the
-  // canvas: a given fraction of a 1920 frame needs 2x the px of a 960 frame.
-  const blurPx = s.meshBlur * 2 * (w / exportW);
-  ctx.filter = blurPx > 0 ? `blur(${blurPx}px)` : "none";
   ctx.drawImage(off, 0, 0);
-  ctx.filter = "none";
-  ctx.restore();
 
   if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
     applyBackgroundEffects(ctx, w, h, s);

@@ -794,12 +794,116 @@ function syncMeshUI(): void {
   meshAnimControls.classList.toggle("hidden", !state.meshAnim);
   ($("bgMeshColor") as HTMLInputElement).value = state.bgColor;
   $("meshCountVal").textContent = String(state.meshNodes.length);
+  $("meshModeStacked").classList.toggle("active", state.meshMode === "stacked");
+  $("meshModeMerge").classList.toggle("active", state.meshMode === "merge");
+  renderNodeList();
   const sel = getSelectedNode();
   const node = state.meshNodes[sel];
   if (node) {
     meshNodeColor.value = node.color;
     meshNodeRadius.value = String(node.radius);
     $("meshNodeRadiusVal").textContent = `${node.radius}%`;
+  }
+}
+
+// Select a node WITHOUT rebuilding the list — used by row/swatch clicks. A full
+// syncMeshUI() would innerHTML="" the list mid-click and destroy the color
+// input before the native picker anchors, making the picker jump to top-right.
+function markSelected(i: number): void {
+  setSelectedNode(i);
+  const node = state.meshNodes[i];
+  if (!node) return;
+  $("meshNodeList").querySelectorAll(".node-row").forEach((el, di) => {
+    const idx = state.meshNodes.length - 1 - di; // display order -> true index
+    el.classList.toggle("sel", idx === i);
+  });
+  meshNodeColor.value = node.color;
+  meshNodeRadius.value = String(node.radius);
+  $("meshNodeRadiusVal").textContent = `${node.radius}%`;
+}
+
+// Build one editable row per node: color swatch + radius + per-row up/down/
+// delete. Clicking a row selects it (so canvas drag + the sliders below target
+// it). Array order == z-order, so up/down reorders layers directly. In Merge
+// mode z-order is irrelevant, so the up/down buttons are hidden.
+function renderNodeList(): void {
+  const list = $("meshNodeList");
+  list.innerHTML = "";
+  const sel = getSelectedNode();
+  const last = state.meshNodes.length - 1;
+  const merged = state.meshMode === "merge";
+  // Render top-layer-first (last painted = top of panel) so the ↑/↓ buttons
+  // match the visual order: up the list == up a layer. Node identity (num) and
+  // the true array index travel with the row.
+  for (let di = state.meshNodes.length - 1; di >= 0; di--) {
+    const i = di; // true array index (paint order)
+    const n = state.meshNodes[i];
+    const row = document.createElement("div");
+    row.className = "node-row" + (i === sel ? " sel" : "");
+
+    const num = document.createElement("span");
+    num.className = "node-num";
+    num.textContent = String(state.meshNodes.length - di); // display order: top row = 1
+
+    const pick = document.createElement("input");
+    pick.type = "color";
+    pick.className = "node-color";
+    pick.value = n.color;
+    pick.title = "Node color — click to select";
+    pick.addEventListener("input", (e) => {
+      e.stopPropagation();
+      n.color = pick.value;
+      if (i === getSelectedNode()) meshNodeColor.value = pick.value;
+      editor.scheduleDraw();
+    });
+    pick.addEventListener("change", () => { pushHistory(); });
+    // Select on the swatch too, but via markSelected (no list rebuild) so the
+    // native picker anchors to this input instead of jumping to top-right.
+    pick.addEventListener("mousedown", (e) => { e.stopPropagation(); markSelected(i); });
+
+    const r = document.createElement("span");
+    r.className = "node-r";
+    r.dataset.idx = String(i);
+    r.textContent = `r${n.radius}%`;
+
+    row.append(num, pick, r);
+    // Whole row is clickable to select (skips rebuild to keep the picker anchored).
+    row.addEventListener("mousedown", (e) => { e.stopPropagation(); markSelected(i); });
+
+    if (!merged) {
+      const up = document.createElement("button");
+      up.className = "mini-btn";
+      up.textContent = "↑";
+      up.title = "Move up a layer";
+      up.disabled = i >= last;
+      up.addEventListener("click", (e) => { e.stopPropagation(); moveNode(1, i); });
+
+      const down = document.createElement("button");
+      down.className = "mini-btn";
+      down.textContent = "↓";
+      down.title = "Move down a layer";
+      down.disabled = i <= 0;
+      down.addEventListener("click", (e) => { e.stopPropagation(); moveNode(-1, i); });
+
+      row.append(up, down);
+    }
+
+    const del = document.createElement("button");
+    del.className = "mini-btn";
+    del.textContent = "×";
+    del.title = "Delete node";
+    del.disabled = state.meshNodes.length <= 1;
+    del.addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.meshNodes.splice(i, 1);
+      setSelectedNode(Math.max(0, Math.min(i, state.meshNodes.length - 1)));
+      syncMeshUI();
+      pushHistory();
+      editor.scheduleDraw();
+    });
+
+    row.append(del);
+    list.appendChild(row);
   }
 }
 
@@ -838,18 +942,38 @@ $("meshDel").addEventListener("click", () => {
 
 meshNodeColor.addEventListener("input", () => {
   const sel = getSelectedNode();
-  if (state.meshNodes[sel]) { state.meshNodes[sel].color = meshNodeColor.value; pushHistory(); editor.scheduleDraw(); }
+  if (state.meshNodes[sel]) { state.meshNodes[sel].color = meshNodeColor.value; editor.scheduleDraw(); }
 });
+meshNodeColor.addEventListener("change", () => { pushHistory(); });
 meshNodeRadius.addEventListener("input", () => {
   const sel = getSelectedNode();
   if (state.meshNodes[sel]) {
     state.meshNodes[sel].radius = Number(meshNodeRadius.value);
     $("meshNodeRadiusVal").textContent = `${meshNodeRadius.value}%`;
-    pushHistory();
+    const rowR = $("meshNodeList").querySelector<HTMLElement>(`.node-r[data-idx="${sel}"]`);
+    if (rowR) rowR.textContent = `r${meshNodeRadius.value}%`;
     editor.scheduleDraw();
   }
 });
+meshNodeRadius.addEventListener("change", () => { pushHistory(); });
 $("meshAnim").addEventListener("change", () => { syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
+
+$("meshModeStacked").addEventListener("click", () => { state.meshMode = "stacked"; syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
+$("meshModeMerge").addEventListener("click", () => { state.meshMode = "merge"; syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
+
+// Reorder z-order (array = paint order; last is top). dir +1 moves toward top.
+// Optional `idx` targets a specific row's buttons; defaults to the selection.
+function moveNode(dir: number, idx: number = getSelectedNode()): void {
+  if (idx < 0 || idx >= state.meshNodes.length) return;
+  const to = idx + dir;
+  if (to < 0 || to >= state.meshNodes.length) return;
+  const nodes = state.meshNodes;
+  [nodes[idx], nodes[to]] = [nodes[to], nodes[idx]];
+  setSelectedNode(to);
+  syncMeshUI();
+  pushHistory();
+  editor.scheduleDraw();
+}
 
 // Drag nodes on the canvas
 function canvasPoint(e: PointerEvent): { x: number; y: number } {

@@ -207,12 +207,19 @@
               </div>
               <div id="meshBg" class="hidden">
                 <label class="inline">Base color<input id="bgMeshColor" type="color" value="#0b0b12" /></label>
+                <label class="stack">Mesh mode
+                  <span class="seg">
+                    <button id="meshModeStacked" class="seg-btn active" data-mode="stacked">Stacked</button>
+                    <button id="meshModeMerge" class="seg-btn" data-mode="merge">Merge</button>
+                  </span>
+                </label>
                 <label class="inline wrap">Nodes <span class="val" id="meshCountVal">3</span>
                   <button id="meshAdd" class="mini-btn">+ Add</button>
                   <button id="meshDel" class="mini-btn">− Remove</button>
                 </label>
-                <label class="inline">Selected node<input id="meshNodeColor" type="color" value="#7a0d0d" /></label>
-                <label class="stack">Node radius <span class="val" id="meshNodeRadiusVal">60%</span>
+                <div id="meshNodeList" class="node-list"></div>
+                <label class="inline">Selected node color<input id="meshNodeColor" type="color" value="#7a0d0d" /></label>
+                <label class="stack">Selected node radius <span class="val" id="meshNodeRadiusVal">60%</span>
                   <input id="meshNodeRadius" type="range" min="10" max="150" step="1" value="60" />
                 </label>
                 <label class="inline"><span>Spread (blob size)</span><input id="meshSpread" type="range" min="1" max="6" step="1" value="5" /></label>

@@ -69,6 +69,7 @@ export interface DesignState {
 
   bgMode: BgMode;
   meshNodes: MeshNode[];
+  meshMode: "stacked" | "merge"; // stacked: later node paints over earlier; merge: nodes blend additively (equal weight)
   meshSpread: number;
   meshBlur: number;
   meshAnim: boolean;
@@ -189,6 +190,7 @@ export function createDefaultState(): DesignState {
       { x: 80, y: 25, color: "#1b1b3a", radius: 60 },
       { x: 55, y: 80, color: "#9aa0ff", radius: 60 },
     ],
+    meshMode: "stacked",
     meshSpread: 5,
     meshBlur: 30,
     meshAnim: false,
