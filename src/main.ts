@@ -17,6 +17,7 @@ import {
 } from "./presetStore";
 import { setSyncListeners, initSync, type SyncStatus } from "./sync";
 import { createEditor, setBgImage, getSelectedNode, setSelectedNode, nodeAt } from "./editor";
+import { oklchToHex } from "./color";
 
 const state = createDefaultState();
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
@@ -1014,24 +1015,7 @@ function oklabToLinearSrgb(L: number, a: number, b: number): [number, number, nu
   const inGamut = r >= 0 && r <= 1 && g >= 0 && g <= 1 && bl >= 0 && bl <= 1;
   return [r, g, bl, inGamut];
 }
-
-// OKLCH -> sRGB hex (clamps chroma on out-of-gamut, then gamma-encodes).
-function oklchToHex(L: number, C: number, hueDeg: number): string {
-  let lab = oklchToOklab(L, C, hueDeg);
-  let [, , , inGamut] = oklabToLinearSrgb(lab.L, lab.a, lab.b);
-  let c = C;
-  for (let k = 0; k < 8 && !inGamut; k++) {
-    c *= 0.8;
-    lab = oklchToOklab(L, c, hueDeg);
-    [, , , inGamut] = oklabToLinearSrgb(lab.L, lab.a, lab.b);
-  }
-  const [r, g, bl] = oklabToLinearSrgb(lab.L, lab.a, lab.b);
-  const toSrgb = (v: number) =>
-    v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
-  const toHex = (v: number) =>
-    Math.round(Math.min(1, Math.max(0, toSrgb(v))) * 255).toString(16).padStart(2, "0");
-  return `#${toHex(r)}${toHex(g)}${toHex(bl)}`;
-}
+// OKLCH -> sRGB hex lives in ./color. Imported at the top of this file.
 
 // Linear sRGB -> CIE XYZ (D65). Used in ΔE computation.
 function linearSrgbToXyz(r: number, g: number, b: number): [number, number, number] {
