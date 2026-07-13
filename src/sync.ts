@@ -1,5 +1,6 @@
 import { PRESETS } from "./presets";
 import type { StoredPreset } from "./presetStore";
+import { SYNC_ENDPOINT, SYNC_AUTH_TOKEN } from "./syncConfig";
 
 // Frontend sync layer. localStorage is the fast-path (works offline, instant
 // load). The Cloudflare Worker + KV is the cross-device source of truth, joined
@@ -7,8 +8,6 @@ import type { StoredPreset } from "./presetStore";
 // the app always works locally; sync is best-effort.
 
 const LS_KEY = "lumina-presets";
-const SYNC_URL_KEY = "lumina-sync-url";
-const SYNC_TOKEN_KEY = "lumina-sync-token";
 const REV_KEY = "lumina-sync-rev";
 
 export type SyncStatus = "local" | "synced" | "offline" | "conflict";
@@ -72,18 +71,7 @@ export function savePresets(list: StoredPreset[]): void {
   pushToServer();
 }
 
-// --- sync settings ---
-
-export function getSyncUrl(): string {
-  return localStorage.getItem(SYNC_URL_KEY) ?? "";
-}
-export function getSyncToken(): string {
-  return localStorage.getItem(SYNC_TOKEN_KEY) ?? "";
-}
-export function setSyncConfig(url: string, token: string): void {
-  localStorage.setItem(SYNC_URL_KEY, url.trim());
-  localStorage.setItem(SYNC_TOKEN_KEY, token.trim());
-}
+// --- sync settings (endpoint + token are baked via syncConfig) ---
 
 function getRev(): number {
   return Number(localStorage.getItem(REV_KEY) ?? "0") || 0;
@@ -96,15 +84,13 @@ function setRev(n: number): void {
 // (unless local is empty, in which case server's data wins). Never wipe the
 // 20 built-ins by adopting an empty server store.
 export async function initSync(): Promise<void> {
-  const url = getSyncUrl();
-  const token = getSyncToken();
-  if (!url || !token) {
+  if (!SYNC_ENDPOINT || !SYNC_AUTH_TOKEN) {
     notify("local");
     return;
   }
   try {
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await fetch(SYNC_ENDPOINT, {
+      headers: { Authorization: `Bearer ${SYNC_AUTH_TOKEN}` },
     });
     if (!res.ok) {
       notify("offline");
@@ -128,18 +114,16 @@ export async function initSync(): Promise<void> {
 }
 
 async function pushToServer(): Promise<void> {
-  const url = getSyncUrl();
-  const token = getSyncToken();
-  if (!url || !token) {
+  if (!SYNC_ENDPOINT || !SYNC_AUTH_TOKEN) {
     notify("local");
     return;
   }
   const rev = getRev();
   const body = { rev, presets: loadPresets() };
   try {
-    const res = await fetch(url, {
+    const res = await fetch(SYNC_ENDPOINT, {
       method: "PUT",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${SYNC_AUTH_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     if (res.ok) {
