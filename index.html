@@ -71,7 +71,25 @@
           <section class="group" id="group-presets">
             <h2 class="group-head"><span class="group-title">Presets <span id="presetCount" class="count">20</span></span> <span class="chev">▾</span></h2>
             <div class="group-body">
+              <div class="preset-create">
+                <input id="newPresetName" type="text" placeholder="New preset name" maxlength="40" />
+                <button id="savePreset" class="mini-btn">Save</button>
+              </div>
               <div id="presets" class="preset-grid"></div>
+              <button id="restoreDefaults" class="mini-btn preset-restore">Restore defaults</button>
+              <details class="sync-box">
+                <summary>Sync across devices</summary>
+                <label class="stack">Worker URL
+                  <input id="syncUrl" type="url" placeholder="https://…workers.dev/presets" />
+                </label>
+                <label class="stack">Sync token
+                  <input id="syncToken" type="password" placeholder="Bearer token" />
+                </label>
+                <div class="row">
+                  <button id="saveSync" class="btn">Connect</button>
+                  <span id="syncStatus" class="sync-status" data-status="local">Local only</span>
+                </div>
+              </details>
             </div>
           </section>
 

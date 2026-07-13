@@ -1,0 +1,7 @@
+name = "lumina-lite-presets"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+kv_namespaces = [
+  { binding = "PRESETS_KV", id = "REPLACE_WITH_NAMESPACE_ID" }
+]

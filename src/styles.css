@@ -525,7 +525,6 @@ input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
   cursor: pointer;
   background: var(--surface-2);
   color: var(--text);
-  overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   transition: border-color 0.12s, background 0.12s;
@@ -533,6 +532,67 @@ input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
 .preset:hover { border-color: var(--accent); background: var(--surface-3); color: var(--text); }
 .preset.active { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--surface-3); }
 .preset:active { transform: translateY(1px); }
+
+.preset-create { display: flex; gap: 6px; margin-bottom: 8px; }
+.preset-create input[type=text] {
+  flex: 1; min-width: 0;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 9px; font: inherit; font-size: 12px;
+}
+.preset-create input[type=text]:focus { outline: none; border-color: var(--accent); }
+.preset-restore { margin-top: 10px; width: 100%; }
+
+/* Per-preset kebab menu (⋮) — portaled to <body>, position:fixed */
+.preset { position: relative; display: flex; align-items: center; justify-content: space-between; padding-right: 6px; }
+.preset-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preset-menu-btn {
+  border: none; background: none; cursor: pointer; color: var(--muted);
+  font-size: 16px; line-height: 1; padding: 0 4px; border-radius: 4px;
+  opacity: 1; transition: color 0.12s, background 0.12s;
+}
+.preset-menu-btn:hover, .preset-menu-btn[aria-expanded="true"] { color: var(--accent); }
+.preset-menu {
+  position: fixed; z-index: 100; min-width: 150px;
+  flex-direction: column; background: var(--surface-3);
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+}
+.preset-menu-item {
+  border: none; background: none; cursor: pointer; text-align: left;
+  color: var(--text); font-size: 12px; padding: 7px 8px; border-radius: 4px;
+  width: 100%;
+}
+.preset-menu-item:hover { background: var(--surface-2); color: var(--accent); }
+.preset-menu-del:hover { color: #ff6b6b; }
+.preset-add {
+  color: var(--accent); border-style: dashed; justify-content: center; gap: 4px;
+}
+.preset-add:hover { border-color: var(--accent); background: var(--surface-3); }
+
+/* Sync (Worker + KV) */
+.sync-box {
+  margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px;
+}
+.sync-box summary {
+  cursor: pointer; font-size: 11px; text-transform: uppercase; letter-spacing: 1.8px;
+  color: var(--text-head); font-family: var(--font-display); font-weight: 600;
+}
+.sync-box summary:hover { color: var(--accent); }
+.sync-box .stack { margin-top: 10px; }
+.sync-box input[type=url], .sync-box input[type=password] {
+  width: 100%; margin-top: 4px; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px;
+  font: inherit; font-size: 12px;
+}
+.sync-box input:focus { outline: none; border-color: var(--accent); }
+.sync-status {
+  font-size: 11px; font-family: var(--font-mono); color: var(--muted);
+  align-self: center;
+}
+.sync-status[data-status="synced"] { color: var(--accent); }
+.sync-status[data-status="offline"] { color: var(--muted); }
+.sync-status[data-status="conflict"] { color: #ffd23f; }
 
 /* ---------- Sheet handle (mobile bottom sheet) ---------- */
 .sheet-handle {

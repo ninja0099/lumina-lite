@@ -7,7 +7,15 @@ import {
   type Align,
   type LayerKey,
 } from "./state";
-import { PRESETS } from "./presets";
+import {
+  loadPresets,
+  createPreset,
+  updatePreset,
+  deletePreset,
+  restoreDefaults,
+  snapshotState,
+} from "./presetStore";
+import { setSyncListeners, initSync, setSyncConfig, getSyncUrl, getSyncToken, type SyncStatus } from "./sync";
 import { createEditor, setBgImage, getSelectedNode, setSelectedNode, nodeAt } from "./editor";
 
 const state = createDefaultState();
@@ -449,31 +457,189 @@ document.querySelectorAll<HTMLButtonElement>(".zoom-preset").forEach((btn) => {
   btn.addEventListener("click", () => setZoom(Number(btn.dataset.z)));
 });
 
-// Presets
+// Presets — local CRUD layer (storage + KV sync layered on later)
 const grid = $("presets");
-const presetEls = new Map<string, HTMLButtonElement>();
-$("presetCount").textContent = String(PRESETS.length);
-for (const p of PRESETS) {
-  const btn = document.createElement("button");
-  btn.className = "preset";
-  btn.textContent = p.name;
-  btn.addEventListener("click", () => {
-    Object.assign(state, p.apply);
-    syncInputsFromState();
-    presetEls.forEach((e) => e.classList.remove("active"));
-    btn.classList.add("active");
+const presetCountEl = $("presetCount");
+const newNameInput = $<HTMLInputElement>("newPresetName");
+
+// Only one preset menu open at a time. The menu is portaled to <body> so it
+// escapes the side-panel's overflow clipping and never overlaps sibling tiles.
+let openMenu: { el: HTMLElement; btn: HTMLElement } | null = null;
+
+function closeMenu(): void {
+  if (!openMenu) return;
+  openMenu.el.remove();
+  openMenu.btn.setAttribute("aria-expanded", "false");
+  openMenu = null;
+}
+
+document.addEventListener("pointerdown", (e) => {
+  if (!openMenu) return;
+  // close on any outside press (covers mouse leave, mobile tap-away, scroll)
+  const t = e.target as Node;
+  if (t !== openMenu.el && t !== openMenu.btn && !openMenu.el.contains(t)) closeMenu();
+}, true);
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeMenu();
+});
+
+function openMenuFor(tile: HTMLElement, p: { id: string; name: string }): void {
+  closeMenu();
+  const menu = document.createElement("div");
+  menu.className = "preset-menu";
+  menu.setAttribute("role", "menu");
+
+  const make = (text: string, cls: string, fn: () => void) => {
+    const b = document.createElement("button");
+    b.className = `preset-menu-item ${cls}`;
+    b.textContent = text;
+    b.setAttribute("role", "menuitem");
+    b.addEventListener("click", (e) => { e.stopPropagation(); closeMenu(); fn(); });
+    menu.appendChild(b);
+    return b;
+  };
+
+  make("Rename", "", () => {
+    const name = window.prompt("Rename preset", p.name);
+    if (name === null) return;
+    updatePreset(p.id, { name });
+    renderPresets();
+  });
+  make("Overwrite with current", "", () => {
+    updatePreset(p.id, { apply: snapshotState(state) });
     state.activePreset = p.name;
-    pushHistory();
+    renderPresets();
     editor.scheduleDraw();
   });
-  presetEls.set(p.name, btn);
-  grid.appendChild(btn);
+  make("Delete", "preset-menu-del", () => {
+    if (!confirm(`Delete "${p.name}"?`)) return;
+    deletePreset(p.id);
+    if (state.activePreset === p.name) state.activePreset = null;
+    renderPresets();
+  });
+
+  const r = tile.getBoundingClientRect();
+  menu.style.top = `${r.bottom + 4}px`;
+  menu.style.left = `${Math.max(8, r.right - 150)}px`;
+  document.body.appendChild(menu);
+  openMenu = { el: menu, btn: tile.querySelector(".preset-menu-btn") as HTMLElement };
+  openMenu.btn.setAttribute("aria-expanded", "true");
 }
+
+function renderPresets(): void {
+  closeMenu();
+  const list = loadPresets();
+  grid.querySelectorAll(".preset, .preset-add").forEach((e) => e.remove());
+  presetCountEl.textContent = String(list.length);
+
+  for (const p of list) {
+    const tile = document.createElement("div");
+    tile.className = "preset";
+    tile.dataset.id = p.id;
+
+    const label = document.createElement("span");
+    label.className = "preset-name";
+    label.textContent = p.name;
+    tile.appendChild(label);
+
+    const menuBtn = document.createElement("button");
+    menuBtn.className = "preset-menu-btn";
+    menuBtn.textContent = "⋮";
+    menuBtn.title = "Preset options";
+    menuBtn.setAttribute("aria-haspopup", "true");
+    menuBtn.setAttribute("aria-expanded", "false");
+
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (openMenu && openMenu.btn === menuBtn) closeMenu();
+      else openMenuFor(tile, p);
+    });
+
+    tile.append(menuBtn);
+    tile.addEventListener("click", (ev) => {
+      if (ev.target === menuBtn) return;
+      closeMenu();
+      Object.assign(state, p.apply);
+      syncInputsFromState();
+      state.activePreset = p.name;
+      pushHistory();
+      editor.scheduleDraw();
+      markActive(p.id);
+    });
+    grid.appendChild(tile);
+  }
+
+  const add = document.createElement("div");
+  add.className = "preset preset-add";
+  add.textContent = "+ Save current";
+  add.title = "Save the current design as a new preset";
+  add.addEventListener("click", () => {
+    const name = (newNameInput.value || "").trim();
+    if (!name && !confirm("Save preset with an auto-generated name?")) return;
+    createPreset(name, snapshotState(state));
+    newNameInput.value = "";
+    state.activePreset = null;
+    renderPresets();
+    editor.scheduleDraw();
+  });
+  grid.appendChild(add);
+}
+
+function markActive(id: string): void {
+  grid.querySelectorAll(".preset").forEach((e) => {
+    e.classList.toggle("active", (e as HTMLElement).dataset.id === id);
+  });
+}
+
+$("savePreset").addEventListener("click", () => {
+  const name = (newNameInput.value || "").trim();
+  if (!name && !confirm("Save preset with an auto-generated name?")) return;
+  createPreset(name, snapshotState(state));
+  newNameInput.value = "";
+  state.activePreset = null;
+  renderPresets();
+  editor.scheduleDraw();
+});
+
+$("restoreDefaults").addEventListener("click", () => {
+  if (!confirm("Restore the 20 built-in presets? This replaces your current preset list.")) return;
+  restoreDefaults();
+  state.activePreset = null;
+  renderPresets();
+});
+
+renderPresets();
+
+// --- Cross-device sync (Worker + KV) ---
+const syncUrlInput = $<HTMLInputElement>("syncUrl");
+const syncTokenInput = $<HTMLInputElement>("syncToken");
+const syncStatusEl = $("syncStatus");
+syncUrlInput.value = getSyncUrl();
+syncTokenInput.value = getSyncToken();
+
+function renderSyncStatus(s: SyncStatus, msg: string): void {
+  const labels: Record<SyncStatus, string> = {
+    local: "Local only",
+    synced: "Synced",
+    offline: "Offline",
+    conflict: "Refreshed",
+  };
+  syncStatusEl.textContent = msg || labels[s];
+  syncStatusEl.dataset.status = s;
+}
+setSyncListeners(renderPresets, renderSyncStatus);
+
+$("saveSync").addEventListener("click", () => {
+  setSyncConfig(syncUrlInput.value, syncTokenInput.value);
+  void initSync();
+});
+
+void initSync();
 
 // Reset
 $("reset").addEventListener("click", () => {
   Object.assign(state, createDefaultState());
-  presetEls.forEach((e) => e.classList.remove("active"));
   state.activePreset = null;
   syncInputsFromState();
   pushHistory();
@@ -589,7 +755,9 @@ function applyHistory(snap: DesignState) {
 }
 
 function syncPresetHighlight() {
-  presetEls.forEach((e, name) => e.classList.toggle("active", state.activePreset === name));
+  const list = loadPresets();
+  const match = list.find((p) => p.name === state.activePreset);
+  markActive(match ? match.id : "");
 }
 
 function updateHistoryButtons() {
