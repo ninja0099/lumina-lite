@@ -27,7 +27,8 @@ html, body { margin: 0; height: 100%; }
 body {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100vh; /* fallback for browsers without dvh support */
+  height: 100dvh;
   overflow: hidden;
   background: var(--bg);
   color: var(--text-sec);
@@ -558,12 +559,13 @@ input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
     bottom: 0;
     left: 0;
     right: 0;
-    height: 50vh;
+    height: 50vh; /* fallback for browsers without dvh support */
+    height: 50dvh;
     border-left: none;
     border-top: 1px solid var(--border);
     border-radius: 14px 14px 0 0;
     background: var(--surface);
-    transform: translateY(calc(100% - 46px));
+    transform: translateY(calc(100% - 46px - env(safe-area-inset-bottom)));
     transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
     z-index: 20;
     display: flex;
@@ -580,7 +582,7 @@ input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 10px 16px 8px;
+    padding: 10px 16px calc(8px + env(safe-area-inset-bottom));
     cursor: grab;
     flex-shrink: 0;
     border-bottom: 1px solid var(--border);
@@ -611,7 +613,7 @@ input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-    padding: 4px 16px 24px;
+    padding: 4px 16px calc(24px + env(safe-area-inset-bottom));
   }
 
   .group-tabs { display: none; }
