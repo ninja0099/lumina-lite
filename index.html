@@ -77,19 +77,10 @@
               </div>
               <div id="presets" class="preset-grid"></div>
               <button id="restoreDefaults" class="mini-btn preset-restore">Restore defaults</button>
-              <details class="sync-box">
-                <summary>Sync across devices</summary>
-                <label class="stack">Worker URL
-                  <input id="syncUrl" type="url" placeholder="https://…workers.dev/presets" />
-                </label>
-                <label class="stack">Sync token
-                  <input id="syncToken" type="password" placeholder="Bearer token" />
-                </label>
-                <div class="row">
-                  <button id="saveSync" class="btn">Connect</button>
-                  <span id="syncStatus" class="sync-status" data-status="local">Local only</span>
-                </div>
-              </details>
+              <div class="sync-box">
+                <span class="sync-label">Sync across devices</span>
+                <span id="syncStatus" class="sync-status" data-status="local">Local only</span>
+              </div>
             </div>
           </section>
 

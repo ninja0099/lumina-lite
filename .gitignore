@@ -3,4 +3,5 @@ dist
 .run
 *.local
 *.log
+.env
 

@@ -15,7 +15,7 @@ import {
   restoreDefaults,
   snapshotState,
 } from "./presetStore";
-import { setSyncListeners, initSync, setSyncConfig, getSyncUrl, getSyncToken, type SyncStatus } from "./sync";
+import { setSyncListeners, initSync, type SyncStatus } from "./sync";
 import { createEditor, setBgImage, getSelectedNode, setSelectedNode, nodeAt } from "./editor";
 
 const state = createDefaultState();
@@ -611,12 +611,8 @@ $("restoreDefaults").addEventListener("click", () => {
 
 renderPresets();
 
-// --- Cross-device sync (Worker + KV) ---
-const syncUrlInput = $<HTMLInputElement>("syncUrl");
-const syncTokenInput = $<HTMLInputElement>("syncToken");
+// --- Cross-device sync (Worker + KV, config baked in) ---
 const syncStatusEl = $("syncStatus");
-syncUrlInput.value = getSyncUrl();
-syncTokenInput.value = getSyncToken();
 
 function renderSyncStatus(s: SyncStatus, msg: string): void {
   const labels: Record<SyncStatus, string> = {
@@ -629,11 +625,6 @@ function renderSyncStatus(s: SyncStatus, msg: string): void {
   syncStatusEl.dataset.status = s;
 }
 setSyncListeners(renderPresets, renderSyncStatus);
-
-$("saveSync").addEventListener("click", () => {
-  setSyncConfig(syncUrlInput.value, syncTokenInput.value);
-  void initSync();
-});
 
 void initSync();
 
