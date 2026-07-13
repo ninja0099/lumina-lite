@@ -89,6 +89,11 @@ body {
 .aspect-btn:hover { color: var(--text); border-color: var(--accent); }
 .aspect-btn.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .aspect-btn:active { transform: translateY(1px); }
+
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--text-sec); cursor: pointer; transition: color 0.12s, border-color 0.12s, transform 0.05s; }
+.icon-btn:hover { color: var(--text); border-color: var(--accent); }
+.icon-btn:active { transform: rotate(60deg); transition: transform 0.3s; }
+.icon-btn svg { width: 14px; height: 14px; display: block; }
 .aspect-btn:focus-visible,
 .zoom-preset:focus-visible,
 .seg-btn:focus-visible,
@@ -463,6 +468,7 @@ input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
 .node-num { font-size: 11px; color: var(--text-sec); min-width: 14px; text-align: right; }
 .node-color { min-width: 30px; }
 .node-r { font-size: 11px; color: var(--text-sec); min-width: 34px; }
+.node-o, .node-s { font-size: 11px; color: var(--text-sec); min-width: 30px; }
 
 /* Buttons */
 .btn {

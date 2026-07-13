@@ -12,6 +12,8 @@ export interface MeshNode {
   y: number; // center y, percent of height (0-100)
   color: string;
   radius: number; // blob radius, percent of min(w,h)
+  opacity: number; // 0-1, per-node alpha
+  softness: number; // 0-1: position of the falloff stop (0 = full linear fade, 1 = hard orb)
 }
 
 export type MeshAnimStyle =
@@ -64,6 +66,9 @@ export interface DesignState {
   bgGradientOpacity: number;
   bgColor: string;
   bgColor2: string;
+  bgColorMid: string;
+  bgUseColorMid: boolean;
+  bgGradientType: "linear" | "radial" | "conic";
   bgGradientAngle: number;
   cornerRadius: number;
 
@@ -72,6 +77,7 @@ export interface DesignState {
   meshMode: "stacked" | "merge"; // stacked: later node paints over earlier; merge: nodes blend additively (equal weight)
   meshSpread: number;
   meshBlur: number;
+  meshBaseOpacity: number; // alpha of the solid base fill (0 = transparent)
   meshAnim: boolean;
   meshAnimStyle: MeshAnimStyle;
   meshAnimSpeed: number;
@@ -181,18 +187,22 @@ export function createDefaultState(): DesignState {
     bgGradientOpacity: 0.45,
     bgColor: "#0b0b12",
     bgColor2: "#1b1b3a",
+    bgColorMid: "#4a2a6a",
+    bgUseColorMid: true,
+    bgGradientType: "linear",
     bgGradientAngle: 135,
     cornerRadius: 0,
 
     bgMode: "linear",
     meshNodes: [
-      { x: 25, y: 30, color: "#7a0d0d", radius: 60 },
-      { x: 80, y: 25, color: "#1b1b3a", radius: 60 },
-      { x: 55, y: 80, color: "#9aa0ff", radius: 60 },
+      { x: 25, y: 30, color: "#7a0d0d", radius: 60, opacity: 1, softness: 0 },
+      { x: 80, y: 25, color: "#1b1b3a", radius: 60, opacity: 1, softness: 0 },
+      { x: 55, y: 80, color: "#9aa0ff", radius: 60, opacity: 1, softness: 0 },
     ],
     meshMode: "stacked",
     meshSpread: 5,
     meshBlur: 30,
+    meshBaseOpacity: 1,
     meshAnim: false,
     meshAnimStyle: "float",
     meshAnimSpeed: 1,

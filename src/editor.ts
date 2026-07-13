@@ -14,15 +14,36 @@ export function setBgImage(dataUrl: string | null): void {
   img.src = dataUrl;
 }
 
-function angleGradient(
+// Background gradient (3 stops when bgUseColorMid is true, else 2 stops)
+// and 3 types: linear / radial / conic.
+function bgGradientFill(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
-  deg: number,
-  c0: string,
-  c1: string,
-): CanvasGradient {
-  const a = (deg * Math.PI) / 180;
+  s: DesignState,
+): string | CanvasGradient {
+  const c0 = s.bgColor;
+  const c1 = s.bgColor2;
+  const useMid = s.bgUseColorMid;
+  const cMid = s.bgColorMid;
+  const ang = s.bgGradientAngle;
+  const addStops = (g: CanvasGradient) => {
+    g.addColorStop(0, c0);
+    if (useMid) g.addColorStop(0.5, cMid);
+    g.addColorStop(1, c1);
+  };
+  if (s.bgGradientType === "conic") {
+    const g = ctx.createConicGradient((ang * Math.PI) / 180, w / 2, h / 2);
+    addStops(g);
+    return g;
+  }
+  if (s.bgGradientType === "radial") {
+    const R = Math.hypot(w, h) / 2;
+    const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, R);
+    addStops(g);
+    return g;
+  }
+  const a = (ang * Math.PI) / 180;
   const len = (Math.abs(Math.cos(a)) * w + Math.abs(Math.sin(a)) * h) / 2;
   const cx = w / 2;
   const cy = h / 2;
@@ -32,9 +53,23 @@ function angleGradient(
     cx + Math.cos(a) * len,
     cy + Math.sin(a) * len,
   );
-  g.addColorStop(0, c0);
-  g.addColorStop(1, c1);
+  addStops(g);
   return g;
+}
+
+// Paint the background gradient at bgGradientOpacity (used by both the image
+// and the linear/non-mesh fallback paths).
+function paintBaseGradient(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  s: DesignState,
+): void {
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, s.bgGradientOpacity));
+  ctx.fillStyle = bgGradientFill(ctx, w, h, s);
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
 }
 
 // animationPhase in [0,1): drives one seamless loop. Every style uses only
@@ -110,8 +145,11 @@ function paintMesh(
   s: DesignState,
   phase: number,
 ): void {
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, s.meshBaseOpacity));
   ctx.fillStyle = s.bgColor;
   ctx.fillRect(0, 0, w, h);
+  ctx.restore();
 
   const off = document.createElement("canvas");
   off.width = w;
@@ -136,7 +174,12 @@ function paintMesh(
     const cy = (n.y / 100 + dy) * h;
     const R = (n.radius / 100) * min * (s.meshSpread / 5) * scale;
     const g = octx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(1, R));
-    g.addColorStop(0, hexWithAlpha(n.color, alpha));
+    const soft = Math.max(0, Math.min(1, n.softness));
+    const a = alpha * Math.max(0, Math.min(1, n.opacity));
+    // soft=0: flat alpha then linear fade (soft blob).
+    // soft=1: flat alpha up to rim, sharp falloff past (hard orb).
+    g.addColorStop(0, hexWithAlpha(n.color, a));
+    g.addColorStop(soft, hexWithAlpha(n.color, a));
     g.addColorStop(1, hexWithAlpha(n.color, 0));
     octx.fillStyle = g;
     octx.fillRect(0, 0, w, h);
@@ -239,11 +282,7 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     ctx.drawImage(off, 0, 0);
 
     if (s.bgGradient) {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, Math.min(1, s.bgGradientOpacity));
-      ctx.fillStyle = angleGradient(ctx, w, h, s.bgGradientAngle, s.bgColor, s.bgColor2);
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
+      paintBaseGradient(ctx, w, h, s);
     }
   } else if (s.layers.background && !s.transparent) {
     if (s.bgMode === "mesh") {
@@ -252,11 +291,7 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
       ctx.fillStyle = s.bgColor;
       ctx.fillRect(0, 0, w, h);
       if (s.bgGradient) {
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, s.bgGradientOpacity));
-        ctx.fillStyle = angleGradient(ctx, w, h, s.bgGradientAngle, s.bgColor, s.bgColor2);
-        ctx.fillRect(0, 0, w, h);
-        ctx.restore();
+        paintBaseGradient(ctx, w, h, s);
       }
       if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
         applyBackgroundEffects(ctx, w, h, s);

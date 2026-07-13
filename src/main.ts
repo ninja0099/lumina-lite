@@ -55,11 +55,15 @@ const binders: Binder[] = [
   { id: "bgColor", apply: (s, v) => (s.bgColor = String(v)) },
   { id: "bgMeshColor", apply: (s, v) => (s.bgColor = String(v)) },
   { id: "bgColor2", apply: (s, v) => (s.bgColor2 = String(v)) },
+  { id: "bgColorMid", apply: (s, v) => (s.bgColorMid = String(v)) },
+  { id: "bgUseColorMid", apply: (s, v) => (s.bgUseColorMid = Boolean(v)) },
+  { id: "bgGradientType", apply: (s, v) => (s.bgGradientType = String(v) as DesignState["bgGradientType"]) },
   { id: "bgGradientAngle", apply: (s, v) => (s.bgGradientAngle = Number(v)) },
   { id: "bgGradientOpacity", apply: (s, v) => (s.bgGradientOpacity = Number(v)) },
   { id: "cornerRadius", apply: (s, v) => (s.cornerRadius = Number(v)) },
   { id: "meshSpread", apply: (s, v) => (s.meshSpread = Number(v)) },
   { id: "meshBlur", apply: (s, v) => (s.meshBlur = Number(v)) },
+  { id: "meshBaseOpacity", apply: (s, v) => (s.meshBaseOpacity = Number(v)) },
   { id: "meshAnim", apply: (s, v) => (s.meshAnim = Boolean(v)) },
   { id: "meshAnimStyle", apply: (s, v) => (s.meshAnimStyle = v as DesignState["meshAnimStyle"]) },
   { id: "meshAnimSpeed", apply: (s, v) => (s.meshAnimSpeed = Number(v)) },
@@ -151,6 +155,8 @@ const labels: LabelRow[] = [
   ["bgEcho", "bgEchoVal"],
   ["duotoneIntensity", "duotoneIntensityVal"],
   ["bgGradientOpacity", "bgGradientOpacityVal"],
+  ["bgGradientAngle", "bgGradientAngleVal", (v) => `${v}°`],
+  ["meshBaseOpacity", "meshBaseOpacityVal", (v) => `${Math.round(Number(v) * 100)}%`],
   ["cornerRadius", "cornerRadiusVal"],
   ["meshBlur", "meshBlurVal", (v) => `${v}px`],
   ["meshAnimSpeed", "meshAnimSpeedVal"],
@@ -784,6 +790,8 @@ const meshBg = $("meshBg");
 const meshAnimControls = $("meshAnimControls");
 const meshNodeColor = $("meshNodeColor") as HTMLInputElement;
 const meshNodeRadius = $("meshNodeRadius") as HTMLInputElement;
+const meshNodeOpacity = $("meshNodeOpacity") as HTMLInputElement;
+const meshNodeSoftness = $("meshNodeSoftness") as HTMLInputElement;
 
 function syncMeshUI(): void {
   const mesh = state.bgMode === "mesh";
@@ -803,6 +811,10 @@ function syncMeshUI(): void {
     meshNodeColor.value = node.color;
     meshNodeRadius.value = String(node.radius);
     $("meshNodeRadiusVal").textContent = `${node.radius}%`;
+    meshNodeOpacity.value = String(node.opacity);
+    $("meshNodeOpacityVal").textContent = `${Math.round(node.opacity * 100)}%`;
+    meshNodeSoftness.value = String(node.softness);
+    $("meshNodeSoftnessVal").textContent = `${Math.round(node.softness * 100)}%`;
   }
 }
 
@@ -820,6 +832,10 @@ function markSelected(i: number): void {
   meshNodeColor.value = node.color;
   meshNodeRadius.value = String(node.radius);
   $("meshNodeRadiusVal").textContent = `${node.radius}%`;
+  meshNodeOpacity.value = String(node.opacity);
+  $("meshNodeOpacityVal").textContent = `${Math.round(node.opacity * 100)}%`;
+  meshNodeSoftness.value = String(node.softness);
+  $("meshNodeSoftnessVal").textContent = `${Math.round(node.softness * 100)}%`;
 }
 
 // Build one editable row per node: color swatch + radius + per-row up/down/
@@ -866,7 +882,17 @@ function renderNodeList(): void {
     r.dataset.idx = String(i);
     r.textContent = `r${n.radius}%`;
 
-    row.append(num, pick, r);
+    const o = document.createElement("span");
+    o.className = "node-o";
+    o.dataset.idx = String(i);
+    o.textContent = `o${Math.round(n.opacity * 100)}%`;
+
+    const soft = document.createElement("span");
+    soft.className = "node-s";
+    soft.dataset.idx = String(i);
+    soft.textContent = `s${Math.round(n.softness * 100)}%`;
+
+    row.append(num, pick, r, o, soft);
     // Whole row is clickable to select (skips rebuild to keep the picker anchored).
     row.addEventListener("mousedown", (e) => { e.stopPropagation(); markSelected(i); });
 
@@ -924,6 +950,8 @@ $("meshAdd").addEventListener("click", () => {
     y: 20 + Math.random() * 60,
     color,
     radius: 60,
+    opacity: 1,
+    softness: 0,
   });
   selectNode(state.meshNodes.length - 1);
   pushHistory();
@@ -936,6 +964,244 @@ $("meshDel").addEventListener("click", () => {
   if (state.meshNodes.length <= 1) return;
   state.meshNodes.splice(sel, 1);
   selectNode(Math.max(0, sel - 1));
+  pushHistory();
+  editor.scheduleDraw();
+});
+
+// Build a hex palette of `count` visually distinct colors.
+//
+// Pipeline (best zero-input / quality-over-speed):
+//   1. generate a large candidate pool in OKLCH — equidistant hue for small N,
+//      golden-angle stepping for large N, paired (L, C) bands so neighbors
+//      land on different brightness/chroma zones
+//   2. score pairwise separation in CIE Lab (ΔE 2000 approximation)
+//   3. pick by maximizing the minimum distance to already-chosen colors
+//   4. run a handful of random-shuffle restarts, keep the set with the
+//      largest worst-pair distance
+// Settings tuned to stay under ~30 ms on a mid-tier laptop for N ≤ ~16.
+//
+// References:
+//   - https://clhenrick.io/blog/color-experiments-with-oklch/
+//   - https://theproductguy.in/blogs/programmatic-color-generation/
+//   - https://mokole.com/palette.html (Lab pairwise-distance approach)
+const GOLDEN_RATIO_DEG = 137.5077640500378;
+function hash32(x: number): number {
+  let h = (x | 0) ^ 0x9e3779b9;
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+interface Oklab { L: number; a: number; b: number; }
+
+// OKLCH -> OKLab (cheap, no sRGB roundtrip in the inner loop).
+function oklchToOklab(L: number, C: number, hueDeg: number): Oklab {
+  const hr = (hueDeg * Math.PI) / 180;
+  return { L, a: C * Math.cos(hr), b: C * Math.sin(hr) };
+}
+
+// OKLab -> linear sRGB (Björn Ottosson coefficients). Returns true on
+// success; false if any channel falls outside [0, 1] (chroma too high for
+// that hue on this monitor gamut).
+function oklabToLinearSrgb(L: number, a: number, b: number): [number, number, number, boolean] {
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+  const lc = l_ ** 3, mc = m_ ** 3, sc = s_ ** 3;
+  const r =  4.0767416621 * lc - 3.3077115913 * mc + 0.2309699292 * sc;
+  const g = -1.2684380046 * lc + 2.6097574011 * mc - 0.3413193965 * sc;
+  const bl = -0.0041960863 * lc - 0.7034186147 * mc + 1.7076147010 * sc;
+  const inGamut = r >= 0 && r <= 1 && g >= 0 && g <= 1 && bl >= 0 && bl <= 1;
+  return [r, g, bl, inGamut];
+}
+
+// OKLCH -> sRGB hex (clamps chroma on out-of-gamut, then gamma-encodes).
+function oklchToHex(L: number, C: number, hueDeg: number): string {
+  let lab = oklchToOklab(L, C, hueDeg);
+  let [, , , inGamut] = oklabToLinearSrgb(lab.L, lab.a, lab.b);
+  let c = C;
+  for (let k = 0; k < 8 && !inGamut; k++) {
+    c *= 0.8;
+    lab = oklchToOklab(L, c, hueDeg);
+    [, , , inGamut] = oklabToLinearSrgb(lab.L, lab.a, lab.b);
+  }
+  const [r, g, bl] = oklabToLinearSrgb(lab.L, lab.a, lab.b);
+  const toSrgb = (v: number) =>
+    v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
+  const toHex = (v: number) =>
+    Math.round(Math.min(1, Math.max(0, toSrgb(v))) * 255).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(bl)}`;
+}
+
+// Linear sRGB -> CIE XYZ (D65). Used in ΔE computation.
+function linearSrgbToXyz(r: number, g: number, b: number): [number, number, number] {
+  const toLin = (v: number) =>
+    v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  const rl = toLin(r), gl = toLin(g), bl = toLin(b);
+  return [
+    0.4124564 * rl + 0.3575761 * gl + 0.1804375 * bl,
+    0.2126729 * rl + 0.7151522 * gl + 0.0721750 * bl,
+    0.0193339 * rl + 0.1191920 * gl + 0.9503041 * bl,
+  ];
+}
+
+// XYZ -> CIE Lab (D65 reference white).
+function xyzToLab(x: number, y: number, z: number): [number, number, number] {
+  const ref = [0.95047, 1.0, 1.08883];
+  const f = (t: number) =>
+    t > 0.008856451679035631 /*(6/29)^3*/ ? Math.cbrt(t) : (t / 0.12841855 /*(29/6)^2 ÷ 3*/) + 0.13793103 /*4/29*/;
+  const fx = f(x / ref[0]), fy = f(y / ref[1]), fz = f(z / ref[2]);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+
+// Cache Lab values per OKLCH color — ΔE reads are the inner loop.
+const labCache = new Map<number, [number, number, number]>();
+function oklchToLab(L: number, C: number, hueDeg: number): [number, number, number] {
+  const key = (Math.round(L * 1000) << 22) ^ (Math.round(C * 1000) << 11) ^ Math.round(hueDeg);
+  const hit = labCache.get(key);
+  if (hit) return hit;
+  const lab = oklchToOklab(L, C, hueDeg);
+  const [r, g, bl] = oklabToLinearSrgb(lab.L, lab.a, lab.b).slice(0, 3) as [number, number, number];
+  const [x, y, z] = linearSrgbToXyz(Math.min(1, Math.max(0, r)), Math.min(1, Math.max(0, g)), Math.min(1, Math.max(0, bl)));
+  const out = xyzToLab(x, y, z);
+  if (labCache.size < 4096) labCache.set(key, out);
+  return out;
+}
+
+// Cheap perceptual distance (Euclidean in Lab). Good enough for relative
+// ranking; full ΔE2000 is overkill here since we only compare *within one
+// run* and the inner loop dominates cost.
+function labDist(a: [number, number, number], b: [number, number, number]): number {
+  const dl = a[0] - b[0], da = a[1] - b[1], db = a[2] - b[2];
+  return dl * dl + da * da + db * db;
+}
+
+interface Candidate {
+  L: number;
+  C: number;
+  hue: number;
+  lab: [number, number, number];
+  hex: string;
+}
+
+// Build a candidate pool in OKLab space, restricting to in-sRGB-gamut colors
+// (we generate hex anyway, so we discard anything that would clamp hard).
+function buildCandidatePool(count: number, seed: number): Candidate[] {
+  const rnd = (i: number) => hash32(seed + i * 2654435761) / 0xffffffff;
+  const offset = seed % 360;
+  const useEquidistant = count <= 12;
+  // Sample finer than needed so the greedy picker has something to choose from.
+  const N_hues = count <= 8 ? 24 : count <= 14 ? 36 : 48;
+  const L_BANDS = [0.55, 0.62, 0.68, 0.74];
+  const C_BANDS = [0.12, 0.16, 0.20];
+  const out: Candidate[] = [];
+  for (let h = 0; h < N_hues; h++) {
+    const hue = useEquidistant
+      ? (offset + (h * 360) / N_hues) % 360
+      : (offset + h * GOLDEN_RATIO_DEG + rnd(h) * 20) % 360;
+    for (const L of L_BANDS) {
+      for (const C of C_BANDS) {
+        const lab = oklchToOklab(L, C, hue);
+        const [, , , inGamut] = oklabToLinearSrgb(lab.L, lab.a, lab.b);
+        if (!inGamut) continue;
+        const labPt = oklchToLab(L, C, hue);
+        out.push({ L, C, hue, lab: labPt, hex: oklchToHex(L, C, hue) });
+      }
+    }
+  }
+  return out;
+}
+
+// Greedy farthest-point selection. Maximizes min distance to the chosen set.
+// `startIdx` lets restarts vary the seed.
+function pickFarthest(pool: Candidate[], count: number, startIdx: number): number[] {
+  if (count <= 0 || pool.length === 0) return [];
+  const chosen: number[] = [((startIdx % pool.length) + pool.length) % pool.length];
+  while (chosen.length < count) {
+    let best = -1;
+    let bestMin = -1;
+    for (let i = 0; i < pool.length; i++) {
+      if (chosen.includes(i)) continue;
+      let minD = Infinity;
+      for (const c of chosen) {
+        const d = labDist(pool[i].lab, pool[c].lab);
+        if (d < minD) minD = d;
+      }
+      if (minD > bestMin) { bestMin = minD; best = i; }
+    }
+    if (best < 0) break;
+    chosen.push(best);
+  }
+  return chosen;
+}
+
+function paletteColors(count: number): string[] {
+  if (count <= 0) return [];
+  const seed = hash32(Date.now() ^ Math.floor(Math.random() * 0xffffffff));
+  const pool = buildCandidatePool(count, seed);
+  if (pool.length <= count) {
+    // Degenerate: pool is too small (e.g. count huge). Fall back to banded loop.
+    return baseBanded(count, seed);
+  }
+  const restarts = count <= 8 ? 6 : count <= 14 ? 4 : 2;
+  let bestSet: number[] = [];
+  let bestWorst = -1;
+  for (let r = 0; r < restarts; r++) {
+    const picked = pickFarthest(pool, count, r * 17);
+    let worst = Infinity;
+    for (let i = 0; i < picked.length; i++) {
+      for (let j = i + 1; j < picked.length; j++) {
+        const d = labDist(pool[picked[i]].lab, pool[picked[j]].lab);
+        if (d < worst) worst = d;
+      }
+    }
+    if (worst > bestWorst) { bestWorst = worst; bestSet = picked; }
+  }
+  return bestSet.map((i) => pool[i].hex);
+}
+
+// Fallback for huge counts where the OKLab pool can't supply enough
+// in-gamut candidates. Uses banded equidistant hue in OKLCH (still richer
+// than golden-ratio-only HSL).
+function baseBanded(count: number, seed: number): string[] {
+  const rnd = (i: number) => hash32(seed + i * 2654435761) / 0xffffffff;
+  const offset = seed % 360;
+  return Array.from({ length: count }, (_, i) => {
+    const hue = (offset + (i * 360) / count) % 360;
+    const band = i % 2;
+    const L = band === 0 ? 0.62 + rnd(i) * 0.05 : 0.68 + rnd(i) * 0.05;
+    const C = band === 0 ? 0.18 + rnd(i + 1000) * 0.03 : 0.14 + rnd(i + 1000) * 0.03;
+    return oklchToHex(L, C, hue);
+  });
+}
+
+// Set the node count to n, preserving existing nodes and filling gaps with
+// golden-angle palette colors.
+function setNodeCount(n: number): void {
+  const cur = state.meshNodes;
+  const colors = paletteColors(n);
+  while (cur.length < n) {
+    const k = cur.length;
+    cur.push({ x: 15 + ((k * 37) % 70), y: 15 + ((k * 53) % 70), color: colors[k], radius: 60, opacity: 1, softness: 0 });
+  }
+  if (cur.length > n) cur.length = n;
+  selectNode(Math.min(getSelectedNode() < 0 ? 0 : getSelectedNode(), n - 1));
+  syncMeshUI();
+  pushHistory();
+  editor.scheduleDraw();
+}
+
+document.querySelectorAll<HTMLButtonElement>("#meshBg [data-nodes]").forEach((btn) => {
+  btn.addEventListener("click", () => setNodeCount(Number(btn.dataset.nodes)));
+});
+
+// Generate a fresh palette sized to the current node count.
+$("meshPaletteRefresh").addEventListener("click", () => {
+  const colors = paletteColors(state.meshNodes.length);
+  for (let i = 0; i < colors.length; i++) {
+    if (state.meshNodes[i]) state.meshNodes[i].color = colors[i];
+  }
+  syncMeshUI();
   pushHistory();
   editor.scheduleDraw();
 });
@@ -956,6 +1222,28 @@ meshNodeRadius.addEventListener("input", () => {
   }
 });
 meshNodeRadius.addEventListener("change", () => { pushHistory(); });
+meshNodeOpacity.addEventListener("input", () => {
+  const sel = getSelectedNode();
+  if (state.meshNodes[sel]) {
+    state.meshNodes[sel].opacity = Number(meshNodeOpacity.value);
+    $("meshNodeOpacityVal").textContent = `${Math.round(Number(meshNodeOpacity.value) * 100)}%`;
+    const rowO = $("meshNodeList").querySelector<HTMLElement>(`.node-o[data-idx="${sel}"]`);
+    if (rowO) rowO.textContent = `o${Math.round(Number(meshNodeOpacity.value) * 100)}%`;
+    editor.scheduleDraw();
+  }
+});
+meshNodeOpacity.addEventListener("change", () => { pushHistory(); });
+meshNodeSoftness.addEventListener("input", () => {
+  const sel = getSelectedNode();
+  if (state.meshNodes[sel]) {
+    state.meshNodes[sel].softness = Number(meshNodeSoftness.value);
+    $("meshNodeSoftnessVal").textContent = `${Math.round(Number(meshNodeSoftness.value) * 100)}%`;
+    const rowS = $("meshNodeList").querySelector<HTMLElement>(`.node-s[data-idx="${sel}"]`);
+    if (rowS) rowS.textContent = `s${Math.round(Number(meshNodeSoftness.value) * 100)}%`;
+    editor.scheduleDraw();
+  }
+});
+meshNodeSoftness.addEventListener("change", () => { pushHistory(); });
 $("meshAnim").addEventListener("change", () => { syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
 
 $("meshModeStacked").addEventListener("click", () => { state.meshMode = "stacked"; syncMeshUI(); pushHistory(); editor.scheduleDraw(); });

@@ -197,7 +197,16 @@
               <div id="linearBg">
                 <label class="inline"><span>Use gradient</span><input id="bgGradient" type="checkbox" checked /></label>
                 <label class="inline">Color A<input id="bgColor" type="color" value="#0b0b12" /></label>
+                <label class="inline"><span>Use mid color</span><input id="bgUseColorMid" type="checkbox" checked /></label>
+                <label class="inline">Color mid<input id="bgColorMid" type="color" value="#4a2a6a" /></label>
                 <label class="inline">Color B<input id="bgColor2" type="color" value="#1b1b3a" /></label>
+                <label class="inline">Type
+                  <select id="bgGradientType">
+                    <option value="linear" selected>Linear</option>
+                    <option value="radial">Radial</option>
+                    <option value="conic">Conic</option>
+                  </select>
+                </label>
                 <label class="stack">Angle <span class="val" id="bgGradientAngleVal">135°</span>
                   <input id="bgGradientAngle" type="range" min="0" max="360" step="1" value="135" />
                 </label>
@@ -207,6 +216,9 @@
               </div>
               <div id="meshBg" class="hidden">
                 <label class="inline">Base color<input id="bgMeshColor" type="color" value="#0b0b12" /></label>
+                <label class="stack">Base opacity <span class="val" id="meshBaseOpacityVal">100%</span>
+                  <input id="meshBaseOpacity" type="range" min="0" max="1" step="0.01" value="1" />
+                </label>
                 <label class="stack">Mesh mode
                   <span class="seg">
                     <button id="meshModeStacked" class="seg-btn active" data-mode="stacked">Stacked</button>
@@ -217,10 +229,28 @@
                   <button id="meshAdd" class="mini-btn">+ Add</button>
                   <button id="meshDel" class="mini-btn">− Remove</button>
                 </label>
+                <label class="inline wrap">Presets
+                  <span class="seg">
+                    <button class="seg-btn" data-nodes="3">3</button>
+                    <button class="seg-btn" data-nodes="5">5</button>
+                    <button class="seg-btn" data-nodes="7">7</button>
+                  </span>
+                </label>
+                <label class="inline wrap">Palette
+                  <button id="meshPaletteRefresh" class="icon-btn" title="Generate palette for current nodes">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3.2-6.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="21 4 21 10 15 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                </label>
                 <div id="meshNodeList" class="node-list"></div>
                 <label class="inline">Selected node color<input id="meshNodeColor" type="color" value="#7a0d0d" /></label>
                 <label class="stack">Selected node radius <span class="val" id="meshNodeRadiusVal">60%</span>
                   <input id="meshNodeRadius" type="range" min="10" max="150" step="1" value="60" />
+                </label>
+                <label class="stack">Selected node opacity <span class="val" id="meshNodeOpacityVal">100%</span>
+                  <input id="meshNodeOpacity" type="range" min="0" max="1" step="0.01" value="1" />
+                </label>
+                <label class="stack">Selected node softness <span class="val" id="meshNodeSoftnessVal">0%</span>
+                  <input id="meshNodeSoftness" type="range" min="0" max="1" step="0.01" value="0" />
                 </label>
                 <label class="inline"><span>Spread (blob size)</span><input id="meshSpread" type="range" min="1" max="6" step="1" value="5" /></label>
                 <label class="stack">Blur <span class="val" id="meshBlurVal">30px</span>
