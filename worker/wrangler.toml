@@ -3,5 +3,5 @@ main = "src/index.ts"
 compatibility_date = "2026-07-01"
 
 kv_namespaces = [
-  { binding = "PRESETS_KV", id = "REPLACE_WITH_NAMESPACE_ID" }
+  { binding = "PRESETS_KV", id = "d162d4e0be484274ad9bde1d9c8aaf29" }
 ]
