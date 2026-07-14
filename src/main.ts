@@ -17,7 +17,7 @@ import {
 } from "./presetStore";
 import { setSyncListeners, initSync, type SyncStatus } from "./sync";
 import { createEditor, setBgImage, getSelectedNode, setSelectedNode, nodeAt } from "./editor";
-import { oklchToHex } from "./color";
+import { oklchToHex, parseHex } from "./color";
 import Coloris from "./vendor/coloris/coloris";
 
 const state = createDefaultState();
@@ -1290,6 +1290,23 @@ $("meshPaletteRefresh").addEventListener("click", () => {
     ci++;
   }
   syncMeshUI();
+  pushHistory();
+  editor.scheduleDraw();
+});
+
+// Generate a gradient palette for linear mode (3 colors sorted by hue).
+$("linearPaletteRefresh").addEventListener("click", () => {
+  const hexes = paletteColors(3);
+  // Sort by hue for a smooth gradient transition
+  const withHue = hexes.map((h) => {
+    const p = parseHex(h);
+    return { hex: h, hue: p ? p.oklch.h : 0 };
+  });
+  withHue.sort((a, b) => a.hue - b.hue);
+  state.bgColor = withHue[0].hex;
+  state.bgColorMid = withHue[1].hex;
+  state.bgColor2 = withHue[2].hex;
+  syncInputsFromState();
   pushHistory();
   editor.scheduleDraw();
 });
