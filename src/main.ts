@@ -134,16 +134,69 @@ for (const b of binders) {
   }
 }
 
-// Vendor: Coloris color picker attached via `data-coloris` on each color
-// input. Anchor the popup to the panel column instead of the body so the
-// dialog tracks scroll and avoids bleed on narrow viewports.
+// Vendor: Coloris color picker. We bind to our `class="coloris"` text inputs
+// and let Coloris wrap them. With wrap=true, Coloris renders a swatch overlay
+// on the input and opens its own dialog on click. It dispatches `input` on the
+// underlying input with a hex string, so the binder contract is preserved.
+// parent is left as default (body) so the picker isn't clipped by the panel's
+// overflow-y:auto and opens in the correct position relative to the viewport.
 Coloris({
-  parent: ".panel",
+  el: ".coloris",
   themeMode: "dark",
   alpha: false,
   format: "hex",
-  wrap: false, // keep our existing <input type="color"> swatch; don't auto-wrap
+  wrap: true,
+  focusInput: false, // prevent mobile keyboard from opening on picker show
 });
+
+// Close the Coloris picker on scroll or touch/click outside.
+// Coloris handles click-outside natively, but scroll and mobile touch need
+// explicit listeners so the dialog doesn't stay open while the user navigates.
+document.addEventListener("scroll", () => Coloris.close(), true);
+document.addEventListener("touchstart", (e) => {
+  if (!(e.target as Element).closest(".clr-picker, .coloris, .clr-field")) {
+    Coloris.close();
+  }
+}, { passive: true });
+
+// Initialize swatches: Coloris sets .clr-field { color: transparent } initially.
+// We need to propagate each input's value to the wrapper so the button::after
+// swatch shows the actual color instead of the checkerboard placeholder.
+// We also patch the .value setter so any programmatic assignment auto-updates.
+function syncSwatch(el: HTMLInputElement): void {
+  const field = el.closest(".clr-field");
+  if (field) (field as HTMLElement).style.color = el.value;
+}
+function initColorSwatches(): void {
+  document.querySelectorAll<HTMLInputElement>(".coloris").forEach((el) => {
+    // Prevent mobile keyboard: tabIndex=-1 removes from tab order, mousedown
+    // preventDefault stops the browser from focusing the input on touch/tap.
+    // Coloris binds its own click handler separately so the picker still opens.
+    el.tabIndex = -1;
+    if (!(el as any).__colorisFocusGuard) {
+      el.addEventListener("mousedown", (e) => e.preventDefault());
+      (el as any).__colorisFocusGuard = true;
+    }
+    syncSwatch(el);
+    // Patch .value setter once per element so future programmatic writes update swatch
+    if (!(el as any).__colorisPatched) {
+      const proto = HTMLInputElement.prototype;
+      const desc = Object.getOwnPropertyDescriptor(proto, "value")!;
+      const set = desc.set!;
+      Object.defineProperty(el, "value", {
+        get: desc.get,
+        set(v: string) {
+          set.call(this, v);
+          syncSwatch(this);
+        },
+        configurable: true,
+      });
+      (el as any).__colorisPatched = true;
+    }
+  });
+}
+// Run once after DOM ready for the static 12 inputs
+requestAnimationFrame(initColorSwatches);
 
 // Live value labels. Optional formatter formats the raw slider value.
 type LabelRow = [string, string] | [string, string, (v: string) => string];
@@ -818,8 +871,11 @@ function syncMeshUI(): void {
   $("meshModeStacked").classList.toggle("active", state.meshMode === "stacked");
   $("meshModeMerge").classList.toggle("active", state.meshMode === "merge");
   renderNodeList();
+  // Rebind Coloris for dynamically created node-list swatches, then init swatches
+  Coloris({ el: ".coloris" });
+  initColorSwatches();
   const sel = getSelectedNode();
-  const node = state.meshNodes[sel];
+  const node = state.meshNodes[sel] ?? state.meshNodes[state.meshNodes.length - 1];
   if (node) {
     meshNodeColor.value = node.color;
     meshNodeRadius.value = String(node.radius);
@@ -875,8 +931,8 @@ function renderNodeList(): void {
     num.textContent = String(state.meshNodes.length - di); // display order: top row = 1
 
     const pick = document.createElement("input");
-    pick.type = "color";
-    pick.className = "node-color";
+    pick.type = "text";
+    pick.className = "node-color coloris";
     pick.value = n.color;
     pick.title = "Node color — click to select";
     pick.addEventListener("input", (e) => {

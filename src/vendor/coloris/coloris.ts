@@ -5,6 +5,7 @@
 import "./coloris.min.js";
 
 interface ColorisOptions {
+  el?: string | HTMLElement | HTMLElement[];
   parent?: string | HTMLElement;
   theme?: "default" | "large" | "polaroid" | "pill";
   themeMode?: "light" | "dark" | "auto";
