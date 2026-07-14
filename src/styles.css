@@ -780,3 +780,5 @@ input[type=number] {
   }
   .panel { transition: none; }
 }
+
+.toggle-all { width: 14px; height: 14px; margin-left: 6px; vertical-align: middle; accent-color: var(--accent); }

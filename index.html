@@ -272,17 +272,16 @@
                   </button>
                 </div>
                 <div id="meshNodeList" class="node-list"></div>
-                <div class="inline"><label for="meshNodeColor">Selected node color</label><input id="meshNodeColor" type="text" class="coloris" /></div>
                 <div class="stack">
-                  <label for="meshNodeRadius">Selected node radius <span class="val" id="meshNodeRadiusVal">60%</span></label>
+                  <label for="meshNodeRadius">Selected node radius <span class="val" id="meshNodeRadiusVal">60%</span> <input id="meshRadiusAll" type="checkbox" class="toggle-all" title="Apply to all nodes" /></label>
                   <input id="meshNodeRadius" type="range" min="10" max="150" step="1" value="60" />
                 </div>
                 <div class="stack">
-                  <label for="meshNodeOpacity">Selected node opacity <span class="val" id="meshNodeOpacityVal">100%</span></label>
+                  <label for="meshNodeOpacity">Selected node opacity <span class="val" id="meshNodeOpacityVal">100%</span> <input id="meshOpacityAll" type="checkbox" class="toggle-all" title="Apply to all nodes" /></label>
                   <input id="meshNodeOpacity" type="range" min="0" max="1" step="0.01" value="1" />
                 </div>
                 <div class="stack">
-                  <label for="meshNodeSoftness">Selected node softness <span class="val" id="meshNodeSoftnessVal">0%</span></label>
+                  <label for="meshNodeSoftness">Selected node softness <span class="val" id="meshNodeSoftnessVal">0%</span> <input id="meshSoftnessAll" type="checkbox" class="toggle-all" title="Apply to all nodes" /></label>
                   <input id="meshNodeSoftness" type="range" min="0" max="1" step="0.01" value="0" />
                 </div>
                 <div class="inline"><label for="meshSpread">Spread (blob size)</label><input id="meshSpread" type="range" min="1" max="6" step="1" value="5" /></div>

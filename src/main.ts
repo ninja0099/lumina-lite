@@ -847,10 +847,12 @@ const bgModeMesh = $("bgModeMesh");
 const linearBg = $("linearBg");
 const meshBg = $("meshBg");
 const meshAnimControls = $("meshAnimControls");
-const meshNodeColor = $("meshNodeColor") as HTMLInputElement;
 const meshNodeRadius = $("meshNodeRadius") as HTMLInputElement;
 const meshNodeOpacity = $("meshNodeOpacity") as HTMLInputElement;
 const meshNodeSoftness = $("meshNodeSoftness") as HTMLInputElement;
+const meshRadiusAll = $("meshRadiusAll") as HTMLInputElement;
+const meshOpacityAll = $("meshOpacityAll") as HTMLInputElement;
+const meshSoftnessAll = $("meshSoftnessAll") as HTMLInputElement;
 
 function syncMeshUI(): void {
   const mesh = state.bgMode === "mesh";
@@ -870,7 +872,6 @@ function syncMeshUI(): void {
   const sel = getSelectedNode();
   const node = state.meshNodes[sel] ?? state.meshNodes[state.meshNodes.length - 1];
   if (node) {
-    meshNodeColor.value = node.color;
     meshNodeRadius.value = String(node.radius);
     $("meshNodeRadiusVal").textContent = `${node.radius}%`;
     meshNodeOpacity.value = String(node.opacity);
@@ -891,7 +892,6 @@ function markSelected(i: number): void {
     const idx = state.meshNodes.length - 1 - di; // display order -> true index
     el.classList.toggle("sel", idx === i);
   });
-  meshNodeColor.value = node.color;
   meshNodeRadius.value = String(node.radius);
   $("meshNodeRadiusVal").textContent = `${node.radius}%`;
   meshNodeOpacity.value = String(node.opacity);
@@ -931,7 +931,6 @@ function renderNodeList(): void {
     pick.addEventListener("input", (e) => {
       e.stopPropagation();
       n.color = pick.value;
-      if (i === getSelectedNode()) meshNodeColor.value = pick.value;
       editor.scheduleDraw();
     });
     pick.addEventListener("change", () => { pushHistory(); });
@@ -1315,47 +1314,55 @@ $("linearPaletteRefresh").addEventListener("click", () => {
   editor.scheduleDraw();
 });
 
-meshNodeColor.addEventListener("input", () => {
-  const sel = getSelectedNode();
-  if (state.meshNodes[sel]) {
-    state.meshNodes[sel].color = meshNodeColor.value;
-    const rowPick = $("meshNodeList").querySelector<HTMLInputElement>(".node-row.sel .node-color");
-    if (rowPick) { rowPick.value = meshNodeColor.value; initColorSwatches(); }
-    editor.scheduleDraw();
-  }
-});
-meshNodeColor.addEventListener("change", () => { pushHistory(); });
 meshNodeRadius.addEventListener("input", () => {
-  const sel = getSelectedNode();
-  if (state.meshNodes[sel]) {
-    state.meshNodes[sel].radius = Number(meshNodeRadius.value);
-    $("meshNodeRadiusVal").textContent = `${meshNodeRadius.value}%`;
-    const rowR = $("meshNodeList").querySelector<HTMLElement>(`.node-r[data-idx="${sel}"]`);
-    if (rowR) rowR.textContent = `r${meshNodeRadius.value}%`;
-    editor.scheduleDraw();
+  const val = Number(meshNodeRadius.value);
+  $("meshNodeRadiusVal").textContent = `${meshNodeRadius.value}%`;
+  if (meshRadiusAll.checked) {
+    state.meshNodes.forEach(n => { n.radius = val; });
+    renderNodeList();
+  } else {
+    const sel = getSelectedNode();
+    if (state.meshNodes[sel]) {
+      state.meshNodes[sel].radius = val;
+      const rowR = $("meshNodeList").querySelector<HTMLElement>(`.node-r[data-idx="${sel}"]`);
+      if (rowR) rowR.textContent = `r${meshNodeRadius.value}%`;
+    }
   }
+  editor.scheduleDraw();
 });
 meshNodeRadius.addEventListener("change", () => { pushHistory(); });
 meshNodeOpacity.addEventListener("input", () => {
-  const sel = getSelectedNode();
-  if (state.meshNodes[sel]) {
-    state.meshNodes[sel].opacity = Number(meshNodeOpacity.value);
-    $("meshNodeOpacityVal").textContent = `${Math.round(Number(meshNodeOpacity.value) * 100)}%`;
-    const rowO = $("meshNodeList").querySelector<HTMLElement>(`.node-o[data-idx="${sel}"]`);
-    if (rowO) rowO.textContent = `o${Math.round(Number(meshNodeOpacity.value) * 100)}%`;
-    editor.scheduleDraw();
+  const val = Number(meshNodeOpacity.value);
+  $("meshNodeOpacityVal").textContent = `${Math.round(val * 100)}%`;
+  if (meshOpacityAll.checked) {
+    state.meshNodes.forEach(n => { n.opacity = val; });
+    renderNodeList();
+  } else {
+    const sel = getSelectedNode();
+    if (state.meshNodes[sel]) {
+      state.meshNodes[sel].opacity = val;
+      const rowO = $("meshNodeList").querySelector<HTMLElement>(`.node-o[data-idx="${sel}"]`);
+      if (rowO) rowO.textContent = `o${Math.round(val * 100)}%`;
+    }
   }
+  editor.scheduleDraw();
 });
 meshNodeOpacity.addEventListener("change", () => { pushHistory(); });
 meshNodeSoftness.addEventListener("input", () => {
-  const sel = getSelectedNode();
-  if (state.meshNodes[sel]) {
-    state.meshNodes[sel].softness = Number(meshNodeSoftness.value);
-    $("meshNodeSoftnessVal").textContent = `${Math.round(Number(meshNodeSoftness.value) * 100)}%`;
-    const rowS = $("meshNodeList").querySelector<HTMLElement>(`.node-s[data-idx="${sel}"]`);
-    if (rowS) rowS.textContent = `s${Math.round(Number(meshNodeSoftness.value) * 100)}%`;
-    editor.scheduleDraw();
+  const val = Number(meshNodeSoftness.value);
+  $("meshNodeSoftnessVal").textContent = `${Math.round(val * 100)}%`;
+  if (meshSoftnessAll.checked) {
+    state.meshNodes.forEach(n => { n.softness = val; });
+    renderNodeList();
+  } else {
+    const sel = getSelectedNode();
+    if (state.meshNodes[sel]) {
+      state.meshNodes[sel].softness = val;
+      const rowS = $("meshNodeList").querySelector<HTMLElement>(`.node-s[data-idx="${sel}"]`);
+      if (rowS) rowS.textContent = `s${Math.round(val * 100)}%`;
+    }
   }
+  editor.scheduleDraw();
 });
 meshNodeSoftness.addEventListener("change", () => { pushHistory(); });
 $("meshAnim").addEventListener("change", () => { syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
