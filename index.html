@@ -424,6 +424,10 @@
             <h2 class="group-head"><span class="group-title">Export</span> <span class="chev">▾</span></h2>
             <div class="group-body">
               <div class="stack">
+                <span>Filename</span>
+                <input id="exportFilename" type="text" placeholder="lumina-lite" />
+              </div>
+              <div class="stack">
                 <label for="exportFormat">Format</label>
                 <select id="exportFormat"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select>
               </div>
@@ -435,14 +439,15 @@
                   <input id="resH" type="number" min="16" max="8000" step="1" value="1080" />
                 </span>
               </div>
-              <label class="inline"><input id="resLock" type="checkbox" /> Lock aspect ratio</label>
+              <label class="inline"><input id="resLock" type="checkbox" checked /> Lock aspect ratio</label>
               <div class="row">
                 <button id="exportPng" class="btn primary">Export</button>
-                <button id="copyClip" class="btn">Copy</button>
-              </div>
-              <div class="row">
                 <button id="exportMp4" class="btn">Export MP4</button>
               </div>
+              <span class="inline mp4-row">
+                <span class="mp4-pair"><span>fps</span><input id="mp4Fps" class="mp4-num" type="number" min="1" max="60" step="1" value="25" /></span>
+                <span class="mp4-pair"><span>Mbps</span><input id="mp4Bitrate" class="mp4-num" type="number" min="1" max="40" step="1" value="8" /></span>
+              </span>
               <p class="hint" id="exportStatus"></p>
             </div>
           </section>

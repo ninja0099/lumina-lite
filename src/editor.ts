@@ -532,7 +532,7 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     startLoop();
   }
 
-  function exportImage(phase = 0): void {
+  function exportImage(phase = 0, outFileName?: string): void {
     const s = getState();
     const out = document.createElement("canvas");
     out.width = exportW;
@@ -544,10 +544,11 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     animationPhase = prev;
     const mime =
       s.exportFormat === "jpeg" ? "image/jpeg" : s.exportFormat === "webp" ? "image/webp" : "image/png";
+    const ext = s.exportFormat === "jpeg" ? "jpg" : s.exportFormat;
     const url = out.toDataURL(mime);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `lumina-lite.${s.exportFormat === "jpeg" ? "jpg" : s.exportFormat}`;
+    a.download = outFileName ? `${outFileName}.${ext}` : `lumina-lite.${ext}`;
     a.click();
   }
 
@@ -574,12 +575,18 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
   }
 
   // Render one animation frame deterministically at phase t in [0,1).
-  function paintFrame(t: number): HTMLCanvasElement {
+  // If `target` is given, paint into it (caller reuses across frames).
+  // Otherwise create a fresh canvas — used for GIF/WEBP rendering paths.
+  function paintFrame(t: number, target?: HTMLCanvasElement): HTMLCanvasElement {
     const s = getState();
-    const out = document.createElement("canvas");
-    out.width = exportW;
-    out.height = exportH;
+    const out = target ?? document.createElement("canvas");
+    if (!target) {
+      out.width = exportW;
+      out.height = exportH;
+    }
     const octx = out.getContext("2d")!;
+    octx.setTransform(1, 0, 0, 1, 0, 0);
+    octx.clearRect(0, 0, exportW, exportH);
     if (s.bgMode === "mesh" && s.transparent) {
       // transparent mesh: paint nodes only over clear canvas
       const prev = animationPhase;
@@ -595,6 +602,8 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
 
   async function exportAnimation(
     fps = 25,
+    bitrateMbps = 8,
+    outFileName = "lumina-lite.mp4",
     onProgress?: (done: number, total: number, phase: string) => void,
   ): Promise<void> {
     const s = getState();
@@ -620,21 +629,44 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
       codec: "avc1.640033",
       width: exportW,
       height: exportH,
-      bitrate: 8_000_000,
+      bitrate: bitrateMbps * 1_000_000,
       framerate: fps,
     });
-    let frame: VideoFrame;
+    // Reuse one canvas across all frames — allocation-free render loop.
+    const renderCanvas = document.createElement("canvas");
+    renderCanvas.width = exportW;
+    renderCanvas.height = exportH;
+    // Yield via a MessageChannel — gives the browser a real macrotask to flush
+    // pending DOM/UI work without paying rAF's 16ms floor. This is what makes
+    // the "Encoding X/Y" counter update per frame instead of in batches.
+    const nextTick = () =>
+      new Promise<void>((resolve) => {
+        const ch = new MessageChannel();
+        ch.port1.onmessage = () => resolve();
+        ch.port2.postMessage(0);
+      });
     for (let i = 0; i < frames; i++) {
-      const c = paintFrame(i / frames);
-      frame = new VideoFrame(c, { timestamp: (i * 1_000_000) / fps, duration: (1_000_000) / fps });
-      encoder.encode(frame, { keyFrame: i % fps === 0 });
-      frame.close();
+      paintFrame(i / frames, renderCanvas);
+      const frame = new VideoFrame(renderCanvas, {
+        timestamp: (i * 1_000_000) / fps,
+        duration: 1_000_000 / fps,
+      });
+      try {
+        encoder.encode(frame, { keyFrame: i % fps === 0 });
+      } finally {
+        frame.close();
+      }
       if (onProgress) onProgress(i + 1, frames, "Encoding");
+      // Yield after every frame so the status text paints per-frame.
+      // MessageChannel is a real macrotask that flushes pending UI work
+      // without paying rAF's 16ms floor. Doubles as backpressure — the
+      // encoder catches up before we submit the next frame.
+      await nextTick();
     }
     await encoder.flush();
     muxer.finalize();
     const { buffer } = muxer.target;
-    downloadBlob(new Blob([buffer], { type: "video/mp4" }), "lumina-lite.mp4");
+    downloadBlob(new Blob([buffer], { type: "video/mp4" }), outFileName);
   }
 
   function downloadBlob(blob: Blob, name: string): void {

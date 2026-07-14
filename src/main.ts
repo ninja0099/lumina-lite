@@ -841,13 +841,6 @@ $("redo").addEventListener("click", () => {
   updateHistoryButtons();
 });
 
-// Export + clipboard
-function flash(btn: HTMLButtonElement, msg: string): void {
-  const old = btn.textContent;
-  btn.textContent = msg;
-  setTimeout(() => (btn.textContent = old), 1200);
-}
-
 // --- Mesh gradient mode ---
 const bgModeLinear = $("bgModeLinear");
 const bgModeMesh = $("bgModeMesh");
@@ -1419,24 +1412,29 @@ canvas.addEventListener("pointerdown", (e) => {
 });
 
 // --- Export handlers ---
-$("exportPng").addEventListener("click", () => editor.exportImage());
-$("exportTop").addEventListener("click", () => editor.exportImage());
-$("copyClip").addEventListener("click", async () => {
-  const btn = $("copyClip") as HTMLButtonElement;
-  const ok = await editor.copyToClipboard();
-  flash(btn, ok ? "Copied!" : "Failed");
-});
+function getExportFilename(): string {
+  const raw = ($("exportFilename") as HTMLInputElement).value.trim();
+  return (raw || "lumina-lite").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "lumina-lite";
+}
+
+$("exportPng").addEventListener("click", () => editor.exportImage(0, getExportFilename()));
+$("exportTop").addEventListener("click", () => editor.exportImage(0, getExportFilename()));
 
 function runExportMp4(): void {
   const btn = $("exportMp4") as HTMLButtonElement;
   const status = $("exportStatus");
+  const fpsRaw = parseInt(($("mp4Fps") as HTMLInputElement).value, 10);
+  const fps = Number.isFinite(fpsRaw) && fpsRaw > 0 ? Math.min(60, Math.max(1, fpsRaw)) : 25;
+  const bitrateRaw = parseInt(($("mp4Bitrate") as HTMLInputElement).value, 10);
+  const bitrateMbps = Number.isFinite(bitrateRaw) && bitrateRaw > 0 ? Math.min(40, Math.max(1, bitrateRaw)) : 8;
+  const outFileName = `${getExportFilename()}.mp4`;
   btn.disabled = true;
   status.textContent = "Exporting…";
   const onProgress = (done: number, total: number, phase: string) => {
     status.textContent = `${phase} ${done}/${total}`;
   };
   editor
-    .exportAnimation(25, onProgress)
+    .exportAnimation(fps, bitrateMbps, outFileName, onProgress)
     .then(() => (status.textContent = "Done — file downloaded."))
     .catch((err) => {
       status.textContent = (err as Error).message;
@@ -1448,6 +1446,7 @@ function runExportMp4(): void {
 }
 
 $("exportMp4").addEventListener("click", () => runExportMp4());
+
 
 // Collapsible groups (collapsed by default). Heading is keyboard-operable.
 document.querySelectorAll<HTMLElement>(".group-head").forEach((head) => {
