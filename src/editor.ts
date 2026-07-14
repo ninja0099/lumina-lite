@@ -595,8 +595,6 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
       out.height = exportH;
     }
     const octx = out.getContext("2d")!;
-    octx.setTransform(1, 0, 0, 1, 0, 0);
-    octx.clearRect(0, 0, exportW, exportH);
     const prev = animationPhase;
     animationPhase = t;
     paint(octx, exportW, exportH, s);
@@ -610,6 +608,8 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     outFileName = "lumina-lite.mp4",
     onProgress?: (done: number, total: number, phase: string) => void,
   ): Promise<void> {
+    // Stop live render loop to prevent animationPhase race with export.
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
     const s = getState();
     const dur = s.meshAnimDuration;
     const frames = Math.max(4, Math.round(fps * dur));
@@ -671,6 +671,8 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     muxer.finalize();
     const { buffer } = muxer.target;
     downloadBlob(new Blob([buffer], { type: "video/mp4" }), outFileName);
+    // Restart live render loop (was cancelled at export start).
+    scheduleDraw();
   }
 
   function downloadBlob(blob: Blob, name: string): void {

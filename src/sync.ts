@@ -101,17 +101,24 @@ export async function initSync(): Promise<void> {
     const data = (await res.json()) as { rev: number; presets: StoredPreset[] };
     setRev(data.rev);
     if (data.presets && data.presets.length > 0) {
-      // Merge: server presets + any local-only presets (by id)
+      // Merge: server presets overlaid with local versions (by id), plus local-only presets
       const local = loadPresets();
+      const localById = new Map(local.map(p => [p.id, p]));
+      const merged = data.presets.map(sp => {
+        const localVer = localById.get(sp.id);
+        // Prefer local if it's newer (or if it's a modified built-in)
+        if (localVer && (localVer.updatedAt ?? 0) >= (sp.updatedAt ?? 0)) return localVer;
+        return sp;
+      });
       const serverIds = new Set(data.presets.map(p => p.id));
       const localOnly = local.filter(p => !serverIds.has(p.id));
-      writeLocal([...data.presets, ...localOnly]);
+      writeLocal([...merged, ...localOnly]);
       onChange?.();
       notify("synced");
     } else {
       // Server empty but we have local presets: upload them.
       const local = loadPresets();
-      if (local.length > 0) pushToServer();
+      if (local.length > 0) pushQueue = pushQueue.then(() => pushToServer());
       else notify("synced");
     }
   } catch {

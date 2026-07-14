@@ -182,7 +182,7 @@ export function drawPattern(
       break;
     case "Scanlines":
       ctx.globalAlpha = 0.18;
-      for (let y = 0; y < h; y += w / 60) ctx.fillRect(0, y, w, Math.max(1, w / 240));
+      for (let y = 0; y < h; y += w / 60) ctx.fillRect(0, y, w, Math.max(1, Math.min(w / 240, 2)));
       break;
   }
 

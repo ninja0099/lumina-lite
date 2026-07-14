@@ -459,12 +459,13 @@ const EXPORT_PX_FIELDS = ["shadowBlur", "textOutlineWidth", "cornerRadius", "mes
 
 function applyResolution(w: number, h: number, label?: string): void {
   const k = w / editor.getExportSize().w;
-  if (k !== 1) {
+  const kh = h / editor.getExportSize().h;
+  if (k !== 1 || kh !== 1) {
     state.fontSize *= k;
     for (const f of EXPORT_PX_FIELDS) (state as unknown as Record<string, number>)[f] *= k;
-    if (state.letterSpacingUnit === "px") state.letterSpacing *= k;
+    if (state.letterSpacingUnit === "px") state.letterSpacing *= kh;
     if (state.posXUnit === "px") state.posX *= k;
-    if (state.posYUnit === "px") state.posY *= k;
+    if (state.posYUnit === "px") state.posY *= kh;
   }
   $("exportW").textContent = String(w);
   $("exportH").textContent = String(h);
@@ -582,18 +583,21 @@ function openMenuFor(tile: HTMLElement, p: { id: string; name: string }): void {
     const name = window.prompt("Rename preset", p.name);
     if (name === null) return;
     updatePreset(p.id, { name });
+    state.activePreset = p.id;
     renderPresets();
+    markActive(p.id);
   });
   make("Overwrite with current", "", () => {
     updatePreset(p.id, { apply: snapshotState(state) });
-    state.activePreset = p.name;
+    state.activePreset = p.id;
     renderPresets();
+    markActive(p.id);
     editor.scheduleDraw();
   });
   make("Delete", "preset-menu-del", () => {
     if (!confirm(`Delete "${p.name}"?`)) return;
     deletePreset(p.id);
-    if (state.activePreset === p.name) state.activePreset = null;
+    if (state.activePreset === p.id) state.activePreset = null;
     renderPresets();
   });
 
@@ -638,9 +642,9 @@ function renderPresets(): void {
     tile.addEventListener("click", (ev) => {
       if (ev.target === menuBtn) return;
       closeMenu();
-      Object.assign(state, p.apply);
+      Object.assign(state, structuredClone(p.apply));
       syncInputsFromState();
-      state.activePreset = p.name;
+      state.activePreset = p.id;
       pushHistory();
       editor.scheduleDraw();
       markActive(p.id);
@@ -724,6 +728,8 @@ function syncInputsFromState() {
     else if (el instanceof HTMLInputElement && el.type === "range") el.value = String(val);
     else el.value = String(val);
   }
+  // bgMeshColor aliases bgColor but has no state field — sync explicitly
+  ($("bgMeshColor") as HTMLInputElement).value = state.bgColor;
   fontSel.value = state.font;
   patternSel.value = state.pattern;
   fontSizeUnitEl.value = state.fontSizeUnit;
@@ -804,10 +810,8 @@ $<HTMLInputElement>("bgImageFile").addEventListener("change", (e) => {
 // History (undo/redo)
 const history: DesignState[] = [structuredClone(state)];
 let histIdx = 0;
-let suspend = false;
 
 function pushHistory() {
-  if (suspend) return;
   history.splice(histIdx + 1);
   history.push(structuredClone(state));
   histIdx = history.length - 1;
@@ -815,17 +819,15 @@ function pushHistory() {
 }
 
 function applyHistory(snap: DesignState) {
-  suspend = true;
   Object.assign(state, structuredClone(snap));
   syncInputsFromState();
-  suspend = false;
   editor.scheduleDraw();
   syncPresetHighlight();
 }
 
 function syncPresetHighlight() {
   const list = loadPresets();
-  const match = list.find((p) => p.name === state.activePreset);
+  const match = list.find((p) => p.id === state.activePreset);
   markActive(match ? match.id : "");
 }
 
@@ -1325,9 +1327,8 @@ meshNodeRadius.addEventListener("input", () => {
   $("meshNodeRadiusVal").textContent = `${meshNodeRadius.value}%`;
   if (meshRadiusAll.checked) {
     state.meshNodes.forEach(n => { n.radius = val; });
-    renderNodeList();
-    Coloris({ el: ".coloris" });
-    initColorSwatches();
+    // Update per-row text spans without rebuilding DOM
+    $("meshNodeList").querySelectorAll<HTMLElement>(".node-r").forEach(el => el.textContent = `r${meshNodeRadius.value}%`);
   } else {
     const sel = getSelectedNode();
     if (state.meshNodes[sel]) {
@@ -1338,15 +1339,16 @@ meshNodeRadius.addEventListener("input", () => {
   }
   editor.scheduleDraw();
 });
-meshNodeRadius.addEventListener("change", () => { pushHistory(); });
+meshNodeRadius.addEventListener("change", () => {
+  if (meshRadiusAll.checked) { renderNodeList(); Coloris({ el: ".coloris" }); initColorSwatches(); }
+  pushHistory();
+});
 meshNodeOpacity.addEventListener("input", () => {
   const val = Number(meshNodeOpacity.value);
   $("meshNodeOpacityVal").textContent = `${Math.round(val * 100)}%`;
   if (meshOpacityAll.checked) {
     state.meshNodes.forEach(n => { n.opacity = val; });
-    renderNodeList();
-    Coloris({ el: ".coloris" });
-    initColorSwatches();
+    $("meshNodeList").querySelectorAll<HTMLElement>(".node-o").forEach(el => el.textContent = `o${Math.round(val * 100)}%`);
   } else {
     const sel = getSelectedNode();
     if (state.meshNodes[sel]) {
@@ -1357,15 +1359,16 @@ meshNodeOpacity.addEventListener("input", () => {
   }
   editor.scheduleDraw();
 });
-meshNodeOpacity.addEventListener("change", () => { pushHistory(); });
+meshNodeOpacity.addEventListener("change", () => {
+  if (meshOpacityAll.checked) { renderNodeList(); Coloris({ el: ".coloris" }); initColorSwatches(); }
+  pushHistory();
+});
 meshNodeSoftness.addEventListener("input", () => {
   const val = Number(meshNodeSoftness.value);
   $("meshNodeSoftnessVal").textContent = `${Math.round(val * 100)}%`;
   if (meshSoftnessAll.checked) {
     state.meshNodes.forEach(n => { n.softness = val; });
-    renderNodeList();
-    Coloris({ el: ".coloris" });
-    initColorSwatches();
+    $("meshNodeList").querySelectorAll<HTMLElement>(".node-s").forEach(el => el.textContent = `s${Math.round(val * 100)}%`);
   } else {
     const sel = getSelectedNode();
     if (state.meshNodes[sel]) {
@@ -1376,7 +1379,10 @@ meshNodeSoftness.addEventListener("input", () => {
   }
   editor.scheduleDraw();
 });
-meshNodeSoftness.addEventListener("change", () => { pushHistory(); });
+meshNodeSoftness.addEventListener("change", () => {
+  if (meshSoftnessAll.checked) { renderNodeList(); Coloris({ el: ".coloris" }); initColorSwatches(); }
+  pushHistory();
+});
 $("meshAnim").addEventListener("change", () => { syncMeshUI(); });
 
 $("meshModeStacked").addEventListener("click", () => { state.meshMode = "stacked"; syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
