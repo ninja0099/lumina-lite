@@ -436,9 +436,42 @@ select {
   cursor: pointer;
 }
 .stack select, .stack textarea { width: 100%; margin-top: 0; }
-input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
+input[type=file] {
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 100%;
+}
+input[type=file]::file-selector-button {
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+input[type=file]::file-selector-button:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+input[type=file]::file-selector-button:active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
 
-/* Number inputs */
+/* Number inputs — hide spinners cross-browser */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 .res-inputs { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .res-inputs input[type=number] {
   flex: 1; min-width: 0; width: 100%;
