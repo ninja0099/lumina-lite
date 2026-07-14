@@ -1159,7 +1159,11 @@ function buildCandidatePool(count: number, seed: number): Candidate[] {
   // instead of always rainbow. Weighted toward the sector with a complementary tail.
   const warmCool = rnd(9999) < 0.5; // true = warm, false = cool
   const sectorCenter = warmCool ? (rnd(9998) * 60 + 15) : (rnd(9998) * 60 + 195); // warm: 15–75, cool: 195–255
-  const useEquidistant = count <= 6;
+  // Equidistant only makes sense when count is large enough to fill the hue
+  // circle meaningfully. For count<=4 (linear palettes are always 3) the
+  // fixed h*360/count columns repeat on every click — use sector sampling
+  // instead so the hue structure itself varies across calls.
+  const useEquidistant = count >= 6;
   const N_hues = count <= 6 ? count : count <= 8 ? 24 : count <= 14 ? 36 : 48;
   // Wider bands with more entries near the middle for weighted distribution
   const L_BANDS = [0.35, 0.45, 0.52, 0.58, 0.64, 0.70, 0.78, 0.85];
@@ -1221,9 +1225,9 @@ function paletteColors(count: number): string[] {
   const seed = hash32(Date.now() ^ Math.floor(Math.random() * 0xffffffff));
   const pool = buildCandidatePool(count, seed);
   if (pool.length <= count) return baseBanded(count, seed);
-  const restarts = count <= 8 ? 6 : count <= 14 ? 4 : 2;
-  let bestSet: number[] = [];
-  let bestWorst = -1;
+  const restarts = count <= 8 ? 12 : count <= 14 ? 8 : 4;
+  type Scored = { idxs: number[]; worst: number };
+  const ranked: Scored[] = [];
   for (let r = 0; r < restarts; r++) {
     const picked = pickFarthest(pool, count, r * 17);
     let worst = Infinity;
@@ -1233,10 +1237,17 @@ function paletteColors(count: number): string[] {
         if (d < worst) worst = d;
       }
     }
-    if (worst > bestWorst) { bestWorst = worst; bestSet = picked; }
+    ranked.push({ idxs: picked, worst });
   }
+  ranked.sort((a, b) => b.worst - a.worst);
+  // Keep sets within 90% of the best — not just the single global optimum.
+  // Pick one of the qualifying sets non-deterministically so consecutive
+  // clicks return genuinely different palettes.
+  const threshold = ranked[0].worst * 0.9;
+  const viable = ranked.filter((s) => s.worst >= threshold);
+  const chosen = viable[Math.floor(Math.random() * viable.length)].idxs;
   // Sort by chroma ascending: low-C (background base) first, high-C (accent) last
-  return bestSet
+  return chosen
     .map((i) => pool[i])
     .sort((a, b) => a.C - b.C)
     .map((c) => c.hex);
