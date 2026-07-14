@@ -18,6 +18,7 @@ import {
 import { setSyncListeners, initSync, type SyncStatus } from "./sync";
 import { createEditor, setBgImage, getSelectedNode, setSelectedNode, nodeAt } from "./editor";
 import { oklchToHex } from "./color";
+import Coloris from "./vendor/coloris/coloris";
 
 const state = createDefaultState();
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
@@ -132,6 +133,17 @@ for (const b of binders) {
     el.addEventListener(evt, commit);
   }
 }
+
+// Vendor: Coloris color picker attached via `data-coloris` on each color
+// input. Anchor the popup to the panel column instead of the body so the
+// dialog tracks scroll and avoids bleed on narrow viewports.
+Coloris({
+  parent: ".panel",
+  themeMode: "dark",
+  alpha: false,
+  format: "hex",
+  wrap: false, // keep our existing <input type="color"> swatch; don't auto-wrap
+});
 
 // Live value labels. Optional formatter formats the raw slider value.
 type LabelRow = [string, string] | [string, string, (v: string) => string];
