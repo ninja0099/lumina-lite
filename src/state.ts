@@ -14,6 +14,7 @@ export interface MeshNode {
   radius: number; // blob radius, percent of min(w,h)
   opacity: number; // 0-1, per-node alpha
   softness: number; // 0-1: position of the falloff stop (0 = full linear fade, 1 = hard orb)
+  locked?: boolean; // if true, palette refresh preserves this node's color
 }
 
 export type MeshAnimStyle =

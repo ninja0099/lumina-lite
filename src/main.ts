@@ -961,7 +961,21 @@ function renderNodeList(): void {
     soft.dataset.idx = String(i);
     soft.textContent = `s${Math.round(n.softness * 100)}%`;
 
-    row.append(num, pick, r, o, soft);
+    const LOCK_SVG = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+    const UNLOCK_SVG = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+    const lock = document.createElement("button");
+    lock.className = "node-lock" + (n.locked ? " locked" : "");
+    lock.innerHTML = n.locked ? LOCK_SVG : UNLOCK_SVG;
+    lock.title = n.locked ? "Unlock color (palette refresh will change it)" : "Lock color (palette refresh will skip it)";
+    lock.addEventListener("click", (e) => {
+      e.stopPropagation();
+      n.locked = !n.locked;
+      lock.innerHTML = n.locked ? LOCK_SVG : UNLOCK_SVG;
+      lock.title = n.locked ? "Unlock color (palette refresh will change it)" : "Lock color (palette refresh will skip it)";
+      lock.classList.toggle("locked", !!n.locked);
+    });
+
+    row.append(num, pick, r, o, soft, lock);
     // Whole row is clickable to select (skips rebuild to keep the picker anchored).
     row.addEventListener("mousedown", (e) => { e.stopPropagation(); markSelected(i); });
 
@@ -1053,7 +1067,6 @@ $("meshDel").addEventListener("click", () => {
 //   - https://clhenrick.io/blog/color-experiments-with-oklch/
 //   - https://theproductguy.in/blogs/programmatic-color-generation/
 //   - https://mokole.com/palette.html (Lab pairwise-distance approach)
-const GOLDEN_RATIO_DEG = 137.5077640500378;
 function hash32(x: number): number {
   let h = (x | 0) ^ 0x9e3779b9;
   h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
@@ -1136,21 +1149,36 @@ interface Candidate {
   hex: string;
 }
 
-// Build a candidate pool in OKLab space, restricting to in-sRGB-gamut colors
-// (we generate hex anyway, so we discard anything that would clamp hard).
+// Build a candidate pool in OKLab space, restricting to in-sRGB-gamut colors.
+// Wider L/C range than before — gives dark moody, vivid punchy, and pastel palettes
+// in addition to the original mid-tone range.
 function buildCandidatePool(count: number, seed: number): Candidate[] {
   const rnd = (i: number) => hash32(seed + i * 2654435761) / 0xffffffff;
   const offset = seed % 360;
-  const useEquidistant = count <= 12;
-  // Sample finer than needed so the greedy picker has something to choose from.
-  const N_hues = count <= 8 ? 24 : count <= 14 ? 36 : 48;
-  const L_BANDS = [0.55, 0.62, 0.68, 0.74];
-  const C_BANDS = [0.12, 0.16, 0.20];
+  // Warm/cool bias: pick a random hue sector so palettes are thematically coherent
+  // instead of always rainbow. Weighted toward the sector with a complementary tail.
+  const warmCool = rnd(9999) < 0.5; // true = warm, false = cool
+  const sectorCenter = warmCool ? (rnd(9998) * 60 + 15) : (rnd(9998) * 60 + 195); // warm: 15–75, cool: 195–255
+  const useEquidistant = count <= 6;
+  const N_hues = count <= 6 ? count : count <= 8 ? 24 : count <= 14 ? 36 : 48;
+  // Wider bands with more entries near the middle for weighted distribution
+  const L_BANDS = [0.35, 0.45, 0.52, 0.58, 0.64, 0.70, 0.78, 0.85];
+  const C_BANDS = [0.05, 0.10, 0.14, 0.18, 0.22, 0.28];
   const out: Candidate[] = [];
   for (let h = 0; h < N_hues; h++) {
-    const hue = useEquidistant
-      ? (offset + (h * 360) / N_hues) % 360
-      : (offset + h * GOLDEN_RATIO_DEG + rnd(h) * 20) % 360;
+    let hue: number;
+    if (useEquidistant) {
+      // Small N: pure equidistant with small jitter for variety
+      hue = (offset + (h * 360) / count + rnd(h) * 8) % 360;
+    } else {
+      // Large N: bias hues toward the chosen sector
+      const baseHue = (offset + (h * 360) / N_hues) % 360;
+      const distFromSector = Math.abs(((baseHue - sectorCenter + 180) % 360) - 180);
+      const bias = distFromSector < 90 ? 0 : distFromSector < 140 ? 0.3 : 0.6;
+      hue = rnd(h) < (1 - bias)
+        ? (sectorCenter + (baseHue - sectorCenter) * (0.3 + rnd(h + 5000) * 0.5) + rnd(h) * 15) % 360
+        : baseHue;
+    }
     for (const L of L_BANDS) {
       for (const C of C_BANDS) {
         const lab = oklchToOklab(L, C, hue);
@@ -1164,8 +1192,9 @@ function buildCandidatePool(count: number, seed: number): Candidate[] {
   return out;
 }
 
-// Greedy farthest-point selection. Maximizes min distance to the chosen set.
-// `startIdx` lets restarts vary the seed.
+// Greedy farthest-point selection with lightness-contrast weighting.
+// Scores = Lab distance + 0.4 × lightness difference. This ensures the palette
+// has both hue/chroma spread AND enough L contrast for visual depth in mesh blends.
 function pickFarthest(pool: Candidate[], count: number, startIdx: number): number[] {
   if (count <= 0 || pool.length === 0) return [];
   const chosen: number[] = [((startIdx % pool.length) + pool.length) % pool.length];
@@ -1176,7 +1205,7 @@ function pickFarthest(pool: Candidate[], count: number, startIdx: number): numbe
       if (chosen.includes(i)) continue;
       let minD = Infinity;
       for (const c of chosen) {
-        const d = labDist(pool[i].lab, pool[c].lab);
+        const d = labDist(pool[i].lab, pool[c].lab) + 0.4 * Math.abs(pool[i].L - pool[c].L);
         if (d < minD) minD = d;
       }
       if (minD > bestMin) { bestMin = minD; best = i; }
@@ -1191,10 +1220,7 @@ function paletteColors(count: number): string[] {
   if (count <= 0) return [];
   const seed = hash32(Date.now() ^ Math.floor(Math.random() * 0xffffffff));
   const pool = buildCandidatePool(count, seed);
-  if (pool.length <= count) {
-    // Degenerate: pool is too small (e.g. count huge). Fall back to banded loop.
-    return baseBanded(count, seed);
-  }
+  if (pool.length <= count) return baseBanded(count, seed);
   const restarts = count <= 8 ? 6 : count <= 14 ? 4 : 2;
   let bestSet: number[] = [];
   let bestWorst = -1;
@@ -1209,20 +1235,27 @@ function paletteColors(count: number): string[] {
     }
     if (worst > bestWorst) { bestWorst = worst; bestSet = picked; }
   }
-  return bestSet.map((i) => pool[i].hex);
+  // Sort by chroma ascending: low-C (background base) first, high-C (accent) last
+  return bestSet
+    .map((i) => pool[i])
+    .sort((a, b) => a.C - b.C)
+    .map((c) => c.hex);
 }
 
 // Fallback for huge counts where the OKLab pool can't supply enough
-// in-gamut candidates. Uses banded equidistant hue in OKLCH (still richer
-// than golden-ratio-only HSL).
+// in-gamut candidates. Uses wider L/C range and banded equidistant hues.
 function baseBanded(count: number, seed: number): string[] {
   const rnd = (i: number) => hash32(seed + i * 2654435761) / 0xffffffff;
   const offset = seed % 360;
   return Array.from({ length: count }, (_, i) => {
     const hue = (offset + (i * 360) / count) % 360;
-    const band = i % 2;
-    const L = band === 0 ? 0.62 + rnd(i) * 0.05 : 0.68 + rnd(i) * 0.05;
-    const C = band === 0 ? 0.18 + rnd(i + 1000) * 0.03 : 0.14 + rnd(i + 1000) * 0.03;
+    const band = i % 3;
+    const L = band === 0 ? 0.50 + rnd(i) * 0.10
+            : band === 1 ? 0.65 + rnd(i) * 0.10
+            : 0.78 + rnd(i) * 0.07;
+    const C = band === 0 ? 0.10 + rnd(i + 1000) * 0.08
+            : band === 1 ? 0.16 + rnd(i + 1000) * 0.08
+            : 0.08 + rnd(i + 1000) * 0.06;
     return oklchToHex(L, C, hue);
   });
 }
@@ -1250,8 +1283,11 @@ document.querySelectorAll<HTMLButtonElement>("#meshBg [data-nodes]").forEach((bt
 // Generate a fresh palette sized to the current node count.
 $("meshPaletteRefresh").addEventListener("click", () => {
   const colors = paletteColors(state.meshNodes.length);
-  for (let i = 0; i < colors.length; i++) {
-    if (state.meshNodes[i]) state.meshNodes[i].color = colors[i];
+  let ci = 0;
+  for (let i = 0; i < state.meshNodes.length; i++) {
+    if (state.meshNodes[i].locked) continue;
+    state.meshNodes[i].color = colors[ci % colors.length];
+    ci++;
   }
   syncMeshUI();
   pushHistory();
