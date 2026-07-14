@@ -98,53 +98,64 @@
           <section class="group" id="group-typography">
             <h2 class="group-head"><span class="group-title">Typography</span> <span class="chev">▾</span></h2>
             <div class="group-body">
-              <label class="stack">Text
+              <div class="stack">
+                <label for="text">Text</label>
                 <textarea id="text" rows="2" placeholder="Your title (use Enter for line breaks)"></textarea>
-              </label>
-              <label class="row">
-                <span class="chk"><input id="uppercase" type="checkbox" /> Uppercase</span>
-                <span class="chk"><input id="italic" type="checkbox" /> Italic</span>
-              </label>
-              <label class="stack">Font family
+              </div>
+              <div class="ctrl-row">
+                <span class="chk"><input id="uppercase" type="checkbox" /> <label for="uppercase">Uppercase</label></span>
+                <span class="chk"><input id="italic" type="checkbox" /> <label for="italic">Italic</label></span>
+              </div>
+              <div class="stack">
+                <label for="font">Font family</label>
                 <select id="font"></select>
-              </label>
-              <label class="stack inline">Import font from device
+              </div>
+              <div class="stack inline">
+                <label for="fontFile">Import font from device</label>
                 <input id="fontFile" type="file" accept=".ttf,.otf,.woff,.woff2" />
-              </label>
-              <label class="stack">Font size <span class="val" id="fontSizeVal">220px</span>
+              </div>
+              <div class="stack">
+                <label for="fontSize">Font size <span class="val" id="fontSizeVal">220px</span></label>
                 <span class="control"><input id="fontSize" type="range" min="40" max="500" step="1" value="220" />
                   <select id="fontSizeUnit"><option value="px">px</option><option value="pct">% h</option></select></span>
-              </label>
-              <label class="stack">Weight <span class="val" id="weightVal">700</span>
+              </div>
+              <div class="stack">
+                <label for="weight">Weight <span class="val" id="weightVal">700</span></label>
                 <span class="control"><input id="weight" type="range" min="400" max="900" step="100" value="700" />
                   <select id="weightUnit"><option value="weight">wght</option><option value="px">px</option></select></span>
-              </label>
-              <label class="stack">Letter spacing <span class="val" id="spacingVal">4px</span>
+              </div>
+              <div class="stack">
+                <label for="spacing">Letter spacing <span class="val" id="spacingVal">4px</span></label>
                 <span class="control"><input id="spacing" type="range" min="-10" max="40" step="1" value="4" />
                   <select id="letterSpacingUnit"><option value="px">px</option><option value="pct">% h</option></select></span>
-              </label>
-              <label class="stack">Line height <span class="val" id="lineHeightVal">1.2</span>
+              </div>
+              <div class="stack">
+                <label for="lineHeight">Line height <span class="val" id="lineHeightVal">1.2</span></label>
                 <span class="control"><input id="lineHeight" type="range" min="0.6" max="3" step="0.1" value="1.2" />
                   <select id="lineHeightUnit"><option value="ratio">ratio</option><option value="px">px</option></select></span>
-              </label>
-              <label class="stack">Position X <span class="val" id="posXVal">50%</span>
+              </div>
+              <div class="stack">
+                <label for="posX">Position X <span class="val" id="posXVal">50%</span></label>
                 <span class="control"><input id="posX" type="range" min="0" max="100" step="1" value="50" />
                   <select id="posXUnit"><option value="pct">% w</option><option value="px">px</option></select></span>
-              </label>
-              <label class="stack">Position Y <span class="val" id="posYVal">50%</span>
+              </div>
+              <div class="stack">
+                <label for="posY">Position Y <span class="val" id="posYVal">50%</span></label>
                 <span class="control"><input id="posY" type="range" min="0" max="100" step="1" value="50" />
                   <select id="posYUnit"><option value="pct">% h</option><option value="px">px</option></select></span>
-              </label>
-              <label class="stack">Text rotation <span class="val" id="textRotationVal">0°</span>
+              </div>
+              <div class="stack">
+                <label for="textRotation">Text rotation <span class="val" id="textRotationVal">0°</span></label>
                 <input id="textRotation" type="range" min="-90" max="90" step="1" value="0" />
-              </label>
-              <label class="stack">Align
+              </div>
+              <div class="stack">
+                <span>Align</span>
                 <div class="btn-group" id="alignGroup">
                   <button class="btn toggle" data-val="left">Left</button>
                   <button class="btn toggle active" data-val="center">Center</button>
                   <button class="btn toggle" data-val="right">Right</button>
                 </div>
-              </label>
+              </div>
             </div>
           </section>
 
@@ -154,30 +165,35 @@
             <div class="group-body">
               <h3>Color</h3>
               <label class="inline"><span>Use gradient</span><input id="textGradient" type="checkbox" /></label>
-              <label class="inline">Color A<input id="textColor" type="text" class="coloris" /></label>
-              <label class="inline">Color B<input id="textColor2" type="text" class="coloris" /></label>
-              <label class="stack">Angle <span class="val" id="textGradientAngleVal">135°</span>
+              <div class="inline"><label for="textColor">Color A</label><input id="textColor" type="text" class="coloris" /></div>
+              <div class="inline"><label for="textColor2">Color B</label><input id="textColor2" type="text" class="coloris" /></div>
+              <div class="stack">
+                <label for="textGradientAngle">Angle <span class="val" id="textGradientAngleVal">135°</span></label>
                 <input id="textGradientAngle" type="range" min="0" max="360" step="1" value="135" />
-              </label>
-              <label class="stack">Opacity <span class="val" id="textOpacityVal">1.00</span>
+              </div>
+              <div class="stack">
+                <label for="textOpacity">Opacity <span class="val" id="textOpacityVal">1.00</span></label>
                 <input id="textOpacity" type="range" min="0" max="1" step="0.01" value="1" />
-              </label>
+              </div>
               <label class="inline"><span>Transparent text (cutout)</span><input id="transparentText" type="checkbox" /></label>
               <h3>Outline</h3>
               <label class="inline"><span>Enable outline</span><input id="textOutline" type="checkbox" /></label>
-              <label class="stack">Outline width <span class="val" id="textOutlineWidthVal">4px</span>
+              <div class="stack">
+                <label for="textOutlineWidth">Outline width <span class="val" id="textOutlineWidthVal">4px</span></label>
                 <input id="textOutlineWidth" type="range" min="1" max="40" step="1" value="4" />
-              </label>
-              <label class="inline">Outline color<input id="textOutlineColor" type="text" class="coloris" /></label>
+              </div>
+              <div class="inline"><label for="textOutlineColor">Outline color</label><input id="textOutlineColor" type="text" class="coloris" /></div>
               <h3>Shadow</h3>
               <label class="inline"><span>Enable shadow</span><input id="textShadow" type="checkbox" /></label>
-              <label class="inline">Shadow color<input id="shadowColor" type="text" class="coloris" /></label>
-              <label class="stack">Shadow blur <span class="val" id="shadowBlurVal">40px</span>
+              <div class="inline"><label for="shadowColor">Shadow color</label><input id="shadowColor" type="text" class="coloris" /></div>
+              <div class="stack">
+                <label for="shadowBlur">Shadow blur <span class="val" id="shadowBlurVal">40px</span></label>
                 <input id="shadowBlur" type="range" min="0" max="120" step="1" value="40" />
-              </label>
-              <label class="stack">Shadow opacity <span class="val" id="shadowOpacityVal">0.60</span>
+              </div>
+              <div class="stack">
+                <label for="shadowOpacity">Shadow opacity <span class="val" id="shadowOpacityVal">0.60</span></label>
                 <input id="shadowOpacity" type="range" min="0" max="1" step="0.05" value="0.6" />
-              </label>
+              </div>
               <h3>Glow</h3>
               <label class="inline"><span>Enable glow</span><input id="textGlow" type="checkbox" /></label>
             </div>
@@ -188,110 +204,132 @@
             <h2 class="group-head"><span class="group-title">Background</span> <span class="chev">▾</span></h2>
             <div class="group-body">
               <label class="inline"><span>Transparent (PNG alpha)</span><input id="transparent" type="checkbox" /></label>
-              <label class="stack">Mode
+              <div class="stack">
+                <span>Mode</span>
                 <span class="seg">
                   <button id="bgModeLinear" class="seg-btn active" data-mode="linear">Linear</button>
                   <button id="bgModeMesh" class="seg-btn" data-mode="mesh">Mesh</button>
                 </span>
-              </label>
+              </div>
               <div id="linearBg">
                 <label class="inline"><span>Use gradient</span><input id="bgGradient" type="checkbox" checked /></label>
-                <label class="inline">Color A<input id="bgColor" type="text" class="coloris" /></label>
+                <div class="inline"><label for="bgColor">Color A</label><input id="bgColor" type="text" class="coloris" /></div>
                 <label class="inline"><span>Use mid color</span><input id="bgUseColorMid" type="checkbox" checked /></label>
-                <label class="inline">Color mid<input id="bgColorMid" type="text" class="coloris" /></label>
-                <label class="inline">Color B<input id="bgColor2" type="text" class="coloris" /></label>
-                <label class="inline">Type
+                <div class="inline"><label for="bgColorMid">Color mid</label><input id="bgColorMid" type="text" class="coloris" /></div>
+                <div class="inline"><label for="bgColor2">Color B</label><input id="bgColor2" type="text" class="coloris" /></div>
+                <div class="inline"><label for="bgGradientType">Type</label>
                   <select id="bgGradientType">
                     <option value="linear" selected>Linear</option>
                     <option value="radial">Radial</option>
                     <option value="conic">Conic</option>
                   </select>
-                </label>
-                <label class="stack">Angle <span class="val" id="bgGradientAngleVal">135°</span>
+                </div>
+                <div class="stack">
+                  <label for="bgGradientAngle">Angle <span class="val" id="bgGradientAngleVal">135°</span></label>
                   <input id="bgGradientAngle" type="range" min="0" max="360" step="1" value="135" />
-                </label>
-                <label class="stack">Gradient opacity <span class="val" id="bgGradientOpacityVal">0.45</span>
+                </div>
+                <div class="stack">
+                  <label for="bgGradientOpacity">Gradient opacity <span class="val" id="bgGradientOpacityVal">0.45</span></label>
                   <input id="bgGradientOpacity" type="range" min="0" max="1" step="0.01" value="0.45" />
-                </label>
+                </div>
               </div>
               <div id="meshBg" class="hidden">
-                <label class="inline">Base color<input id="bgMeshColor" type="text" class="coloris" /></label>
-                <label class="stack">Base opacity <span class="val" id="meshBaseOpacityVal">100%</span>
+                <div class="inline"><label for="bgMeshColor">Base color</label><input id="bgMeshColor" type="text" class="coloris" /></div>
+                <div class="stack">
+                  <label for="meshBaseOpacity">Base opacity <span class="val" id="meshBaseOpacityVal">100%</span></label>
                   <input id="meshBaseOpacity" type="range" min="0" max="1" step="0.01" value="1" />
-                </label>
-                <label class="stack">Mesh mode
+                </div>
+                <div class="stack">
+                  <span>Mesh mode</span>
                   <span class="seg">
                     <button id="meshModeStacked" class="seg-btn active" data-mode="stacked">Stacked</button>
                     <button id="meshModeMerge" class="seg-btn" data-mode="merge">Merge</button>
                   </span>
-                </label>
-                <label class="inline wrap">Nodes <span class="val" id="meshCountVal">3</span>
+                </div>
+                <div class="inline wrap">
+                  <span>Nodes <span class="val" id="meshCountVal">3</span></span>
                   <button id="meshAdd" class="mini-btn">+ Add</button>
                   <button id="meshDel" class="mini-btn">− Remove</button>
-                </label>
-                <label class="inline wrap">Presets
+                </div>
+                <div class="inline wrap">
+                  <span>Presets</span>
                   <span class="seg">
                     <button class="seg-btn" data-nodes="3">3</button>
                     <button class="seg-btn" data-nodes="5">5</button>
                     <button class="seg-btn" data-nodes="7">7</button>
                   </span>
-                </label>
-                <label class="inline wrap">Palette
+                </div>
+                <div class="inline wrap">
+                  <span>Palette</span>
                   <button id="meshPaletteRefresh" class="icon-btn" title="Generate palette for current nodes">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3.2-6.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="21 4 21 10 15 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </button>
-                </label>
+                </div>
                 <div id="meshNodeList" class="node-list"></div>
-                <label class="inline">Selected node color<input id="meshNodeColor" type="text" class="coloris" /></label>
-                <label class="stack">Selected node radius <span class="val" id="meshNodeRadiusVal">60%</span>
+                <div class="inline"><label for="meshNodeColor">Selected node color</label><input id="meshNodeColor" type="text" class="coloris" /></div>
+                <div class="stack">
+                  <label for="meshNodeRadius">Selected node radius <span class="val" id="meshNodeRadiusVal">60%</span></label>
                   <input id="meshNodeRadius" type="range" min="10" max="150" step="1" value="60" />
-                </label>
-                <label class="stack">Selected node opacity <span class="val" id="meshNodeOpacityVal">100%</span>
+                </div>
+                <div class="stack">
+                  <label for="meshNodeOpacity">Selected node opacity <span class="val" id="meshNodeOpacityVal">100%</span></label>
                   <input id="meshNodeOpacity" type="range" min="0" max="1" step="0.01" value="1" />
-                </label>
-                <label class="stack">Selected node softness <span class="val" id="meshNodeSoftnessVal">0%</span>
+                </div>
+                <div class="stack">
+                  <label for="meshNodeSoftness">Selected node softness <span class="val" id="meshNodeSoftnessVal">0%</span></label>
                   <input id="meshNodeSoftness" type="range" min="0" max="1" step="0.01" value="0" />
-                </label>
-                <label class="inline"><span>Spread (blob size)</span><input id="meshSpread" type="range" min="1" max="6" step="1" value="5" /></label>
-                <label class="stack">Blur <span class="val" id="meshBlurVal">30px</span>
+                </div>
+                <div class="inline"><label for="meshSpread">Spread (blob size)</label><input id="meshSpread" type="range" min="1" max="6" step="1" value="5" /></div>
+                <div class="stack">
+                  <label for="meshBlur">Blur <span class="val" id="meshBlurVal">30px</span></label>
                   <input id="meshBlur" type="range" min="0" max="60" step="1" value="30" />
-                </label>
+                </div>
                 <label class="inline"><span>Animate</span><input id="meshAnim" type="checkbox" /></label>
                 <div id="meshAnimControls" class="hidden">
-                  <label class="stack">Style
+                  <div class="stack">
+                    <label for="meshAnimStyle">Style</label>
                     <select id="meshAnimStyle"><option value="float">Float</option><option value="orbit">Orbit</option><option value="breathe">Breathe</option><option value="wave">Wave</option><option value="drift">Drift</option><option value="swarm">Swarm</option><option value="roam">Roam</option></select>
-                  </label>
-                  <label class="stack">Speed <span class="val" id="meshAnimSpeedVal">1</span>
+                  </div>
+                  <div class="stack">
+                    <label for="meshAnimSpeed">Speed <span class="val" id="meshAnimSpeedVal">1</span></label>
                     <input id="meshAnimSpeed" type="range" min="0.1" max="3" step="0.1" value="1" />
-                  </label>
-                  <label class="stack">Amplitude <span class="val" id="meshAnimAmplitudeVal">15%</span>
+                  </div>
+                  <div class="stack">
+                    <label for="meshAnimAmplitude">Amplitude <span class="val" id="meshAnimAmplitudeVal">15%</span></label>
                     <input id="meshAnimAmplitude" type="range" min="0" max="40" step="1" value="15" />
-                  </label>
-                  <label class="stack">Duration (s) <span class="val" id="meshAnimDurationVal">6</span>
+                  </div>
+                  <div class="stack">
+                    <label for="meshAnimDuration">Duration (s) <span class="val" id="meshAnimDurationVal">6</span></label>
                     <input id="meshAnimDuration" type="range" min="2" max="20" step="1" value="6" />
-                  </label>
+                  </div>
                 </div>
                 <p class="hint">Drag nodes directly on the canvas.</p>
               </div>
               <h3>Background image</h3>
-              <label class="stack">Image
+              <div class="stack">
+                <label for="bgImageFile">Image</label>
                 <input id="bgImageFile" type="file" accept="image/*" />
-              </label>
-              <label class="stack">Fit
+              </div>
+              <div class="stack">
+                <label for="bgImageFit">Fit</label>
                 <select id="bgImageFit"><option value="cover">Cover</option><option value="contain">Contain</option><option value="stretch">Stretch</option><option value="tile">Tile</option></select>
-              </label>
-              <label class="stack">Image opacity <span class="val" id="bgImageOpacityVal">0.60</span>
+              </div>
+              <div class="stack">
+                <label for="bgImageOpacity">Image opacity <span class="val" id="bgImageOpacityVal">0.60</span></label>
                 <input id="bgImageOpacity" type="range" min="0" max="1" step="0.05" value="0.6" />
-              </label>
-              <label class="stack">Image X <span class="val" id="bgImageXVal">50%</span>
+              </div>
+              <div class="stack">
+                <label for="bgImageX">Image X <span class="val" id="bgImageXVal">50%</span></label>
                 <input id="bgImageX" type="range" min="0" max="100" step="1" value="50" />
-              </label>
-              <label class="stack">Image Y <span class="val" id="bgImageYVal">50%</span>
+              </div>
+              <div class="stack">
+                <label for="bgImageY">Image Y <span class="val" id="bgImageYVal">50%</span></label>
                 <input id="bgImageY" type="range" min="0" max="100" step="1" value="50" />
-              </label>
-              <label class="stack">Image rotation <span class="val" id="bgImageRotationVal">0°</span>
+              </div>
+              <div class="stack">
+                <label for="bgImageRotation">Image rotation <span class="val" id="bgImageRotationVal">0°</span></label>
                 <input id="bgImageRotation" type="range" min="-90" max="90" step="1" value="0" />
-              </label>
+              </div>
             </div>
           </section>
 
@@ -299,44 +337,54 @@
           <section class="group" id="group-bgeffects">
             <h2 class="group-head"><span class="group-title">Background effects</span> <span class="chev">▾</span></h2>
             <div class="group-body">
-              <label class="stack">Gaussian blur <span class="val" id="bgBlurVal">0px</span>
+              <div class="stack">
+                <label for="bgBlur">Gaussian blur <span class="val" id="bgBlurVal">0px</span></label>
                 <input id="bgBlur" type="range" min="0" max="50" step="1" value="0" />
-              </label>
-              <label class="stack">Chromatic aberration <span class="val" id="bgChromaticVal">0px</span>
+              </div>
+              <div class="stack">
+                <label for="bgChromatic">Chromatic aberration <span class="val" id="bgChromaticVal">0px</span></label>
                 <input id="bgChromatic" type="range" min="0" max="30" step="1" value="0" />
-              </label>
-              <label class="stack">Wave amount <span class="val" id="bgWaveAmountVal">0px</span>
+              </div>
+              <div class="stack">
+                <label for="bgWaveAmount">Wave amount <span class="val" id="bgWaveAmountVal">0px</span></label>
                 <input id="bgWaveAmount" type="range" min="0" max="30" step="1" value="0" />
-              </label>
-              <label class="stack">Wave frequency <span class="val" id="bgWaveFrequencyVal">4</span>
+              </div>
+              <div class="stack">
+                <label for="bgWaveFrequency">Wave frequency <span class="val" id="bgWaveFrequencyVal">4</span></label>
                 <input id="bgWaveFrequency" type="range" min="1" max="12" step="1" value="4" />
-              </label>
-              <label class="stack">Glitch / datamosh <span class="val" id="bgGlitchVal">0%</span>
+              </div>
+              <div class="stack">
+                <label for="bgGlitch">Glitch / datamosh <span class="val" id="bgGlitchVal">0%</span></label>
                 <input id="bgGlitch" type="range" min="0" max="100" step="1" value="0" />
-              </label>
-              <label class="stack">Film noise / grain <span class="val" id="bgFilmGrainVal">0%</span>
+              </div>
+              <div class="stack">
+                <label for="bgFilmGrain">Film noise / grain <span class="val" id="bgFilmGrainVal">0%</span></label>
                 <input id="bgFilmGrain" type="range" min="0" max="100" step="1" value="0" />
-              </label>
+              </div>
               <label class="inline"><span>Halftone dots</span><input id="bgHalftone" type="checkbox" /></label>
-              <label class="stack">Vignette <span class="val" id="bgVignetteVal">0%</span>
+              <div class="stack">
+                <label for="bgVignette">Vignette <span class="val" id="bgVignetteVal">0%</span></label>
                 <input id="bgVignette" type="range" min="0" max="100" step="1" value="0" />
-              </label>
+              </div>
               <label class="inline"><span>Pixelate / mosaic</span><input id="bgPixelate" type="checkbox" /></label>
-              <label class="stack">Duotone / gradient map <span class="val" id="duotoneIntensityVal">0%</span>
+              <div class="stack">
+                <label for="duotoneIntensity">Duotone / gradient map <span class="val" id="duotoneIntensityVal">0%</span></label>
                 <input id="duotoneIntensity" type="range" min="0" max="100" step="1" value="0" />
-              </label>
-              <label class="inline">Duotone shadow<input id="duotoneColorA" type="text" class="coloris" /></label>
-              <label class="inline">Duotone highlight<input id="duotoneColorB" type="text" class="coloris" /></label>
-              <label class="inline">Duotone mode
+              </div>
+              <div class="inline"><label for="duotoneColorA">Duotone shadow</label><input id="duotoneColorA" type="text" class="coloris" /></div>
+              <div class="inline"><label for="duotoneColorB">Duotone highlight</label><input id="duotoneColorB" type="text" class="coloris" /></div>
+              <div class="inline"><label for="bgDuotone">Duotone mode</label>
                 <select id="bgDuotone"><option value="0">Gradient map</option><option value="1">Twin</option></select>
-              </label>
-              <label class="stack">Bloom / glow <span class="val" id="bgBloomVal">0%</span>
+              </div>
+              <div class="stack">
+                <label for="bgBloom">Bloom / glow <span class="val" id="bgBloomVal">0%</span></label>
                 <input id="bgBloom" type="range" min="0" max="100" step="1" value="0" />
-              </label>
+              </div>
               <label class="inline"><span>Long shadow (text echo)</span><input id="bgLongShadow" type="checkbox" /></label>
-              <label class="stack">Echo copies <span class="val" id="bgEchoVal">0</span>
+              <div class="stack">
+                <label for="bgEcho">Echo copies <span class="val" id="bgEchoVal">0</span></label>
                 <input id="bgEcho" type="range" min="0" max="8" step="1" value="0" />
-              </label>
+              </div>
               <label class="inline"><span>Border glow</span><input id="borderGlow" type="checkbox" /></label>
             </div>
           </section>
@@ -345,10 +393,11 @@
           <section class="group" id="group-pattern">
             <h2 class="group-head"><span class="group-title">Overlay pattern</span> <span class="chev">▾</span></h2>
             <div class="group-body">
-              <label class="stack">Pattern
+              <div class="stack">
+                <label for="pattern">Pattern</label>
                 <select id="pattern"></select>
-              </label>
-              <label class="inline">Pattern color<input id="patternColor" type="text" class="coloris" /></label>
+              </div>
+              <div class="inline"><label for="patternColor">Pattern color</label><input id="patternColor" type="text" class="coloris" /></div>
               <label class="inline"><span>Enable glass panel</span><input id="glassPanel" type="checkbox" /></label>
             </div>
           </section>
@@ -357,9 +406,10 @@
           <section class="group" id="group-frame">
             <h2 class="group-head"><span class="group-title">Frame &amp; corners</span> <span class="chev">▾</span></h2>
             <div class="group-body">
-              <label class="stack">Corner radius <span class="val" id="cornerRadiusVal">0px</span>
+              <div class="stack">
+                <label for="cornerRadius">Corner radius <span class="val" id="cornerRadiusVal">0px</span></label>
                 <input id="cornerRadius" type="range" min="0" max="600" step="1" value="0" />
-              </label>
+              </div>
             </div>
           </section>
 
@@ -367,16 +417,18 @@
           <section class="group" id="group-export">
             <h2 class="group-head"><span class="group-title">Export</span> <span class="chev">▾</span></h2>
             <div class="group-body">
-              <label class="stack">Format
+              <div class="stack">
+                <label for="exportFormat">Format</label>
                 <select id="exportFormat"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select>
-              </label>
-              <label class="stack">Resolution
+              </div>
+              <div class="stack">
+                <span>Resolution</span>
                 <span class="res-inputs">
                   <input id="resW" type="number" min="16" max="8000" step="1" value="1920" />
                   <span class="res-x">×</span>
                   <input id="resH" type="number" min="16" max="8000" step="1" value="1080" />
                 </span>
-              </label>
+              </div>
               <label class="inline"><input id="resLock" type="checkbox" /> Lock aspect ratio</label>
               <div class="row">
                 <button id="exportPng" class="btn primary">Export</button>

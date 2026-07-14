@@ -247,8 +247,8 @@ body {
 }
 
 /* ---------- Controls ---------- */
-label { display: block; }
-label.stack {
+label { display: inline; }
+.stack {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -258,20 +258,22 @@ label.stack {
   letter-spacing: 0.8px;
   margin-bottom: 14px;
 }
-label.stack .control { display: flex; align-items: center; gap: 8px; }
-label.stack .control select { width: auto; flex: 0 0 auto; margin-top: 0; }
-label.inline {
+.stack > label { font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.stack .control { display: flex; align-items: center; gap: 8px; }
+.stack .control select { width: auto; flex: 0 0 auto; margin-top: 0; }
+label.inline, .inline {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: fit-content;
   font-size: 13px;
   color: var(--text);
   text-transform: none;
   letter-spacing: 0;
   margin-bottom: 10px;
 }
-label.inline.wrap { flex-wrap: wrap; align-items: center; }
-label.row { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+label.inline.wrap, .inline.wrap { flex-wrap: wrap; align-items: center; }
+.ctrl-row { display: flex; align-items: center; gap: 14px; width: fit-content; margin-bottom: 10px; }
 .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); }
 
 .val { color: var(--accent); font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 11px; font-weight: 500; }
@@ -420,7 +422,7 @@ select {
   padding-right: 28px;
   cursor: pointer;
 }
-label.stack select, label.stack textarea { width: 100%; margin-top: 0; }
+.stack select, .stack textarea { width: 100%; margin-top: 0; }
 input[type=file] { font-size: 12px; color: var(--muted); max-width: 100%; }
 
 /* Number inputs */
