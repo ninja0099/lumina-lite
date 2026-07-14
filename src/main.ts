@@ -1260,7 +1260,12 @@ $("meshPaletteRefresh").addEventListener("click", () => {
 
 meshNodeColor.addEventListener("input", () => {
   const sel = getSelectedNode();
-  if (state.meshNodes[sel]) { state.meshNodes[sel].color = meshNodeColor.value; editor.scheduleDraw(); }
+  if (state.meshNodes[sel]) {
+    state.meshNodes[sel].color = meshNodeColor.value;
+    const rowPick = $("meshNodeList").querySelector<HTMLInputElement>(".node-row.sel .node-color");
+    if (rowPick) { rowPick.value = meshNodeColor.value; initColorSwatches(); }
+    editor.scheduleDraw();
+  }
 });
 meshNodeColor.addEventListener("change", () => { pushHistory(); });
 meshNodeRadius.addEventListener("input", () => {
