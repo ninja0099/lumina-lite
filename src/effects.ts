@@ -25,7 +25,6 @@ export function applyBackgroundEffects(
     s.bgWaveAmount > 0 ||
     s.bgGlitch > 0 ||
     s.bgFilmGrain > 0 ||
-    s.bgVignette > 0 ||
     s.bgBloom > 0 ||
     s.bgHalftone ||
     s.bgPixelate ||

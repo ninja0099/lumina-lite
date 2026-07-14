@@ -7,7 +7,6 @@ const loaded = new Set<string>();
 // actually render so the first paint isn't in a fallback.
 export async function ensureFont(family: string, weight = 700): Promise<void> {
   if (loaded.has(family)) return;
-  loaded.add(family);
 
   const url =
     "https://fonts.googleapis.com/css2?family=" +
@@ -19,8 +18,8 @@ export async function ensureFont(family: string, weight = 700): Promise<void> {
     link.rel = "stylesheet";
     link.href = url;
     document.head.appendChild(link);
-    // Warm the specific weight currently in use so the repaint shows it.
     await document.fonts.load(`${weight} 1em "${family}"`).catch(() => {});
+    loaded.add(family);
   } catch {
     // Fall back to system font if fetch fails; do NOT block rendering.
   }

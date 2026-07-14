@@ -129,8 +129,12 @@ for (const b of binders) {
     el.addEventListener("input", editor.scheduleDraw);
     el.addEventListener("change", commit);
   } else {
-    const evt = el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input";
-    el.addEventListener(evt, commit);
+    if (el.type === "checkbox" || el.tagName === "SELECT") {
+      el.addEventListener("change", commit);
+    } else {
+      el.addEventListener("input", () => { apply(); editor.scheduleDraw(); });
+      el.addEventListener("change", commit);
+    }
   }
 }
 
@@ -459,6 +463,8 @@ function applyResolution(w: number, h: number, label?: string): void {
     state.fontSize *= k;
     for (const f of EXPORT_PX_FIELDS) (state as unknown as Record<string, number>)[f] *= k;
     if (state.letterSpacingUnit === "px") state.letterSpacing *= k;
+    if (state.posXUnit === "px") state.posX *= k;
+    if (state.posYUnit === "px") state.posY *= k;
   }
   $("exportW").textContent = String(w);
   $("exportH").textContent = String(h);
@@ -1112,9 +1118,9 @@ function xyzToLab(x: number, y: number, z: number): [number, number, number] {
 }
 
 // Cache Lab values per OKLCH color — ΔE reads are the inner loop.
-const labCache = new Map<number, [number, number, number]>();
+const labCache = new Map<string, [number, number, number]>();
 function oklchToLab(L: number, C: number, hueDeg: number): [number, number, number] {
-  const key = (Math.round(L * 1000) << 22) ^ (Math.round(C * 1000) << 11) ^ Math.round(hueDeg);
+  const key = `${L.toFixed(3)}|${C.toFixed(3)}|${hueDeg.toFixed(1)}`;
   const hit = labCache.get(key);
   if (hit) return hit;
   const lab = oklchToOklab(L, C, hueDeg);
@@ -1320,6 +1326,8 @@ meshNodeRadius.addEventListener("input", () => {
   if (meshRadiusAll.checked) {
     state.meshNodes.forEach(n => { n.radius = val; });
     renderNodeList();
+    Coloris({ el: ".coloris" });
+    initColorSwatches();
   } else {
     const sel = getSelectedNode();
     if (state.meshNodes[sel]) {
@@ -1337,6 +1345,8 @@ meshNodeOpacity.addEventListener("input", () => {
   if (meshOpacityAll.checked) {
     state.meshNodes.forEach(n => { n.opacity = val; });
     renderNodeList();
+    Coloris({ el: ".coloris" });
+    initColorSwatches();
   } else {
     const sel = getSelectedNode();
     if (state.meshNodes[sel]) {
@@ -1354,6 +1364,8 @@ meshNodeSoftness.addEventListener("input", () => {
   if (meshSoftnessAll.checked) {
     state.meshNodes.forEach(n => { n.softness = val; });
     renderNodeList();
+    Coloris({ el: ".coloris" });
+    initColorSwatches();
   } else {
     const sel = getSelectedNode();
     if (state.meshNodes[sel]) {
@@ -1365,7 +1377,7 @@ meshNodeSoftness.addEventListener("input", () => {
   editor.scheduleDraw();
 });
 meshNodeSoftness.addEventListener("change", () => { pushHistory(); });
-$("meshAnim").addEventListener("change", () => { syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
+$("meshAnim").addEventListener("change", () => { syncMeshUI(); });
 
 $("meshModeStacked").addEventListener("click", () => { state.meshMode = "stacked"; syncMeshUI(); pushHistory(); editor.scheduleDraw(); });
 $("meshModeMerge").addEventListener("click", () => { state.meshMode = "merge"; syncMeshUI(); pushHistory(); editor.scheduleDraw(); });

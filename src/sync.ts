@@ -68,8 +68,10 @@ export function loadPresets(): StoredPreset[] {
 
 export function savePresets(list: StoredPreset[]): void {
   writeLocal(list);
-  pushToServer();
+  pushQueue = pushQueue.then(() => pushToServer());
 }
+
+let pushQueue: Promise<void> = Promise.resolve();
 
 // --- sync settings (endpoint + token are baked via syncConfig) ---
 
@@ -99,7 +101,11 @@ export async function initSync(): Promise<void> {
     const data = (await res.json()) as { rev: number; presets: StoredPreset[] };
     setRev(data.rev);
     if (data.presets && data.presets.length > 0) {
-      writeLocal(data.presets);
+      // Merge: server presets + any local-only presets (by id)
+      const local = loadPresets();
+      const serverIds = new Set(data.presets.map(p => p.id));
+      const localOnly = local.filter(p => !serverIds.has(p.id));
+      writeLocal([...data.presets, ...localOnly]);
       onChange?.();
       notify("synced");
     } else {

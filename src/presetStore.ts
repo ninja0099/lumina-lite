@@ -58,7 +58,7 @@ export function restoreDefaults(): StoredPreset[] {
   const list = PRESETS.map((p) => ({
     id: p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
     name: p.name,
-    apply: p.apply,
+    apply: structuredClone(p.apply),
     createdAt: 0,
     updatedAt: 0,
   }));

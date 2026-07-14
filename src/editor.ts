@@ -7,11 +7,13 @@ let exportW = 1920;
 let exportH = 1080;
 
 let bgImg: HTMLImageElement | null = null;
+let meshOffscreen: HTMLCanvasElement | null = null;
 export function setBgImage(dataUrl: string | null): Promise<void> {
   if (!dataUrl) { bgImg = null; return Promise.resolve(); }
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => { bgImg = img; resolve(); };
+    img.onerror = () => { bgImg = null; resolve(); };
     img.src = dataUrl;
   });
 }
@@ -153,10 +155,14 @@ function paintMesh(
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 
-  const off = document.createElement("canvas");
-  off.width = w;
-  off.height = h;
+  if (!meshOffscreen || meshOffscreen.width !== w || meshOffscreen.height !== h) {
+    meshOffscreen = document.createElement("canvas");
+    meshOffscreen.width = w;
+    meshOffscreen.height = h;
+  }
+  const off = meshOffscreen;
   const octx = off.getContext("2d")!;
+  octx.clearRect(0, 0, w, h);
   const min = Math.min(w, h);
   // Merge: every node contributes at equal weight; later nodes don't bury
   // earlier ones. Stacked: each node paints over the previous (default 2D-canvas
@@ -245,7 +251,6 @@ function drawNodeHandles(
 }
 
 function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignState): void {
-  ctx.clearRect(0, 0, w, h);
   if (s.layers.background && bgImg && !s.transparent) {
     const cx = w * (s.bgImageX / 100);
     const cy = h * (s.bgImageY / 100);
@@ -286,19 +291,19 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     if (s.bgGradient) {
       paintBaseGradient(ctx, w, h, s);
     }
-  } else if (s.layers.background && !s.transparent) {
-    if (s.bgMode === "mesh") {
-      paintMesh(ctx, w, h, s, animationPhase);
-    } else {
-      ctx.fillStyle = s.bgColor;
-      ctx.fillRect(0, 0, w, h);
-      if (s.bgGradient) {
-        paintBaseGradient(ctx, w, h, s);
-      }
-      if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
-        applyBackgroundEffects(ctx, w, h, s);
-      }
+  } else if (s.layers.background && !s.transparent && s.bgMode !== "mesh") {
+    ctx.fillStyle = s.bgColor;
+    ctx.fillRect(0, 0, w, h);
+    if (s.bgGradient) {
+      paintBaseGradient(ctx, w, h, s);
     }
+    if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
+      applyBackgroundEffects(ctx, w, h, s);
+    }
+  }
+
+  if (s.layers.background && s.bgMode === "mesh") {
+    paintMesh(ctx, w, h, s, animationPhase);
   }
 
   if (s.layers.pattern && s.pattern !== "None") {
@@ -436,6 +441,7 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
     if (s.transparentText) {
       ctx.save();
       ctx.globalCompositeOperation = "destination-out";
+      ctx.globalAlpha = Math.max(0, Math.min(1, s.textOpacity));
       ctx.fillStyle = "#000";
       ctx.shadowBlur = 0;
       ctx.shadowColor = "transparent";
@@ -474,7 +480,9 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
 }
 
 function hexWithAlpha(hex: string, a: number): string {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  let h = hex.replace(/^#/, "");
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  const m = /^([0-9a-f]{6})$/i.exec(h);
   if (!m) return `rgba(0,0,0,${a})`;
   const n = parseInt(m[1], 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
@@ -589,16 +597,10 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     const octx = out.getContext("2d")!;
     octx.setTransform(1, 0, 0, 1, 0, 0);
     octx.clearRect(0, 0, exportW, exportH);
-    if (s.bgMode === "mesh" && s.transparent) {
-      // transparent mesh: paint nodes only over clear canvas
-      const prev = animationPhase;
-      animationPhase = t;
-      paintMesh(octx, exportW, exportH, s, t);
-      animationPhase = prev;
-    } else {
-      animationPhase = t;
-      paint(octx, exportW, exportH, s);
-    }
+    const prev = animationPhase;
+    animationPhase = t;
+    paint(octx, exportW, exportH, s);
+    animationPhase = prev;
     return out;
   }
 
