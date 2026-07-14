@@ -99,16 +99,21 @@ const binders: Binder[] = [
   { id: "exportFormat", apply: (s, v) => (s.exportFormat = String(v) as DesignState["exportFormat"]) },
 ];
 
-function readValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) {
+function readValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLElement) {
   if (el instanceof HTMLInputElement && (el.type === "checkbox" || el.type === "range")) {
     return el.type === "checkbox" ? el.checked : Number(el.value);
   }
-  return el.value;
+  return (el as HTMLInputElement).value;
 }
+
+// Register the custom OKLCH picker and swap in the migrated fields *before*
+// the binder loop runs, so listeners bind to the custom element.
+registerColorPicker();
+for (const id of CC_FIELDS) replaceInputWithPicker(id);
 
 // Wire inputs -> state -> coalesced redraw.
 for (const b of binders) {
-  const el = $<HTMLInputElement>(b.id);
+  const el = $<HTMLInputElement | HTMLElement>(b.id);
   const apply = () => {
     b.apply(state, readValue(el));
     if (state.activePreset !== null) {
@@ -122,15 +127,21 @@ for (const b of binders) {
     editor.scheduleDraw();
   };
   // Ranges fire a burst of 'input' while dragging — redraw live but only
-  // commit one history entry when the drag ends ('change'). Checkboxes,
-  // selects, and text use 'change'/'input' (already discrete).
-  if (el.type === "range") {
-    el.addEventListener("input", apply);
-    el.addEventListener("input", editor.scheduleDraw);
-    el.addEventListener("change", commit);
+  // commit one history entry when the drag ends ('change'). The custom
+  // <cc-color> picker (and any other non-INPUT element) dispatches its own
+  // discrete `input` events on every change.
+  if (el.tagName === "INPUT") {
+    const input = el as HTMLInputElement;
+    if (input.type === "range") {
+      input.addEventListener("input", apply);
+      input.addEventListener("input", editor.scheduleDraw);
+      input.addEventListener("change", commit);
+    } else {
+      const evt = input.type === "checkbox" ? "change" : "input";
+      input.addEventListener(evt, commit);
+    }
   } else {
-    const evt = el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input";
-    el.addEventListener(evt, commit);
+    el.addEventListener("input", commit);
   }
 }
 
@@ -712,11 +723,11 @@ $("reset").addEventListener("click", () => {
 // Push current state back into the DOM controls (after preset/reset).
 function syncInputsFromState() {
   for (const b of binders) {
-    const el = $<HTMLInputElement>(b.id);
+    const el = $<HTMLInputElement | HTMLElement>(b.id);
     const val = (state as unknown as Record<string, unknown>)[b.id];
     if (el instanceof HTMLInputElement && el.type === "checkbox") el.checked = Boolean(val);
     else if (el instanceof HTMLInputElement && el.type === "range") el.value = String(val);
-    else el.value = String(val);
+    else (el as HTMLElement & { value: string }).value = String(val);
   }
   fontSel.value = state.font;
   patternSel.value = state.pattern;
