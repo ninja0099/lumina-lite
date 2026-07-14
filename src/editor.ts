@@ -7,11 +7,13 @@ let exportW = 1920;
 let exportH = 1080;
 
 let bgImg: HTMLImageElement | null = null;
-export function setBgImage(dataUrl: string | null): void {
-  if (!dataUrl) { bgImg = null; return; }
-  const img = new Image();
-  img.onload = () => (bgImg = img);
-  img.src = dataUrl;
+export function setBgImage(dataUrl: string | null): Promise<void> {
+  if (!dataUrl) { bgImg = null; return Promise.resolve(); }
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => { bgImg = img; resolve(); };
+    img.src = dataUrl;
+  });
 }
 
 // Background gradient (3 stops when bgUseColorMid is true, else 2 stops)

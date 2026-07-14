@@ -785,10 +785,10 @@ $<HTMLInputElement>("bgImageFile").addEventListener("change", (e) => {
   const file = (e.target as HTMLInputElement).files?.[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     const url = reader.result as string;
     state.bgImageDataUrl = url;
-    setBgImage(url);
+    await setBgImage(url);
     pushHistory();
     editor.scheduleDraw();
   };
