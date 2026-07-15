@@ -148,8 +148,8 @@ for (const b of binders) {
 Coloris({
   el: ".coloris",
   themeMode: "dark",
-  alpha: false,
-  format: "hex",
+  alpha: true,
+  format: "auto",
   wrap: true,
   focusInput: false, // prevent mobile keyboard from opening on picker show
 });

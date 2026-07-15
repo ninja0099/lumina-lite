@@ -328,16 +328,17 @@ function duotone(
   const d = img.data;
   const a = Math.min(Math.max(intensity, 0), 100) / 100;
 
-  // Validate and parse hex colors
+  // Validate and parse hex colors (6 or 8 digits; alpha bytes are ignored here —
+  // duotone intensity is controlled separately by `intensity`).
   const parseHex = (hex: string): [number, number, number] => {
     let h = hex.replace(/^#/, "");
     if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-    const m = /^([0-9a-f]{6})$/i.exec(h);
+    const m = /^([0-9a-f]{6}|[0-9a-f]{8})$/i.exec(h);
     if (!m) {
       console.warn(`Invalid hex color "${hex}" for duotone, using black`);
       return [0, 0, 0];
     }
-    const n = parseInt(m[1], 16);
+    const n = parseInt(m[1].slice(0, 6), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   };
 
