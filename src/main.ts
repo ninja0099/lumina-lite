@@ -499,8 +499,6 @@ function syncAspectHighlight(): void {
 
 aspectBtns.forEach((btn) => {
   btn.addEventListener("click", () => {
-    aspectBtns.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
     const ratio = btn.dataset.ratio!;
     const asp = ASPECTS[ratio];
     applyResolution(asp.w, asp.h, ratio);
