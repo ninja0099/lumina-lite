@@ -473,6 +473,7 @@ function commitResolution(w: number, h: number, label?: string): void {
   for (const f of EXPORT_PX_FIELDS) {
     syncRangeSlider(f, `${f}Val`, f === "meshBlur" ? (v) => `${v}px` : undefined);
   }
+  syncAspectHighlight();
 }
 
 function applyResolution(w: number, h: number, label?: string): void {
@@ -488,6 +489,12 @@ function applyResolution(w: number, h: number, label?: string): void {
   commitResolution(w, h, label);
   pushHistory();
   editor.scheduleDraw();
+}
+
+function syncAspectHighlight(): void {
+  const g = gcd(state.exportW, state.exportH) || 1;
+  const key = `${state.exportW / g}:${state.exportH / g}`;
+  aspectBtns.forEach((b) => b.classList.toggle("active", b.dataset.ratio === key));
 }
 
 aspectBtns.forEach((btn) => {
@@ -515,7 +522,6 @@ function onResolutionChange(edited: "w" | "h"): void {
     if (edited === "w") h = clampRes(w / lockRatio);
     else w = clampRes(h * lockRatio);
   }
-  aspectBtns.forEach((b) => b.classList.remove("active"));
   applyResolution(w, h);
 }
 
@@ -1550,5 +1556,6 @@ window.addEventListener("keydown", (e) => {
 
 // Initial render
 syncInputsFromState();
+syncAspectHighlight();
 updateHistoryButtons();
 editor.scheduleDraw();
