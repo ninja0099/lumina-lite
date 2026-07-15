@@ -7,6 +7,32 @@ export function setDesignWidth(w: number): void {
   designW = w;
 }
 
+// Buffer pool to avoid per-frame allocations in pixel effects.
+// Each pool entry is an object with { w, h, buffers: Uint8ClampedArray[] }
+const bufferPools = new Map<string, Uint8ClampedArray<ArrayBufferLike>[]>();
+
+function getBuffer(w: number, h: number): Uint8ClampedArray<ArrayBufferLike> {
+  const key = `${w}x${h}`;
+  const pool = bufferPools.get(key);
+  if (pool && pool.length > 0) {
+    return pool.pop()!;
+  }
+  return new Uint8ClampedArray(w * h * 4);
+}
+
+function releaseBuffer(buf: Uint8ClampedArray, w: number, h: number): void {
+  const key = `${w}x${h}`;
+  let pool = bufferPools.get(key);
+  if (!pool) {
+    pool = [];
+    bufferPools.set(key, pool);
+  }
+  // Cap pool size to 8 buffers per dimension to avoid unbounded growth
+  if (pool.length < 8) {
+    pool.push(buf);
+  }
+}
+
 export function applyBackgroundEffects(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -49,53 +75,78 @@ export function applyBackgroundEffects(
 
 function boxBlur(img: ImageData, w: number, h: number, r: number): void {
   const d = img.data;
-  const bufA = new Uint8ClampedArray(d.length);
-  const bufB = new Uint8ClampedArray(d.length);
-  let src = d;
-  let dst = bufA;
+  const bufA = getBuffer(w, h);
+  const bufB = getBuffer(w, h);
+  let src: Uint8ClampedArray<ArrayBufferLike> = new Uint8ClampedArray(d);
+  let dst: Uint8ClampedArray<ArrayBufferLike> = bufA;
 
   for (let pass = 0; pass < 3; pass++) {
-    const size = r * 2 + 1;
+    // Horizontal pass
     for (let y = 0; y < h; y++) {
-      let r0 = 0, g0 = 0, b0 = 0, a0 = 0;
+      let rSum = 0, gSum = 0, bSum = 0, aSum = 0;
+      // Initialize window at x=0
       for (let i = -r; i <= r; i++) {
-        const p = (y * w + Math.max(0, Math.min(w - 1, i))) * 4;
-        r0 += src[p]; g0 += src[p + 1]; b0 += src[p + 2]; a0 += src[p + 3];
+        const xi = Math.max(0, Math.min(w - 1, i));
+        const p = (y * w + xi) * 4;
+        rSum += src[p]; gSum += src[p + 1]; bSum += src[p + 2]; aSum += src[p + 3];
       }
       for (let x = 0; x < w; x++) {
         const p = (y * w + x) * 4;
-        dst[p] = r0 / size; dst[p + 1] = g0 / size; dst[p + 2] = b0 / size; dst[p + 3] = a0 / size;
-        const rm = (y * w + Math.max(0, Math.min(w - 1, x - r))) * 4;
-        const ad = (y * w + Math.max(0, Math.min(w - 1, x + r + 1))) * 4;
-        r0 += src[ad] - src[rm]; g0 += src[ad + 1] - src[rm + 1];
-        b0 += src[ad + 2] - src[rm + 2]; a0 += src[ad + 3] - src[rm + 3];
+        const count = Math.min(w, x + r + 1) - Math.max(0, x - r);
+        dst[p] = rSum / count;
+        dst[p + 1] = gSum / count;
+        dst[p + 2] = bSum / count;
+        dst[p + 3] = aSum / count;
+        // Slide window
+        const rm = Math.max(0, Math.min(w - 1, x - r));
+        const ad = Math.max(0, Math.min(w - 1, x + r + 1));
+        const rmp = (y * w + rm) * 4;
+        const adp = (y * w + ad) * 4;
+        rSum += src[adp] - src[rmp];
+        gSum += src[adp + 1] - src[rmp + 1];
+        bSum += src[adp + 2] - src[rmp + 2];
+        aSum += src[adp + 3] - src[rmp + 3];
       }
     }
+    // Vertical pass
     const tmp = dst === bufA ? bufB : bufA;
     for (let x = 0; x < w; x++) {
-      let r0 = 0, g0 = 0, b0 = 0, a0 = 0;
+      let rSum = 0, gSum = 0, bSum = 0, aSum = 0;
+      // Initialize window at y=0
       for (let i = -r; i <= r; i++) {
-        const p = (Math.max(0, Math.min(h - 1, i)) * w + x) * 4;
-        r0 += dst[p]; g0 += dst[p + 1]; b0 += dst[p + 2]; a0 += dst[p + 3];
+        const yi = Math.max(0, Math.min(h - 1, i));
+        const p = (yi * w + x) * 4;
+        rSum += dst[p]; gSum += dst[p + 1]; bSum += dst[p + 2]; aSum += dst[p + 3];
       }
       for (let y = 0; y < h; y++) {
         const p = (y * w + x) * 4;
-        tmp[p] = r0 / size; tmp[p + 1] = g0 / size; tmp[p + 2] = b0 / size; tmp[p + 3] = a0 / size;
-        const rm = (Math.max(0, Math.min(h - 1, y - r)) * w + x) * 4;
-        const ad = (Math.max(0, Math.min(h - 1, y + r + 1)) * w + x) * 4;
-        r0 += dst[ad] - dst[rm]; g0 += dst[ad + 1] - dst[rm + 1];
-        b0 += dst[ad + 2] - dst[rm + 2]; a0 += dst[ad + 3] - dst[rm + 3];
+        const count = Math.min(h, y + r + 1) - Math.max(0, y - r);
+        tmp[p] = rSum / count;
+        tmp[p + 1] = gSum / count;
+        tmp[p + 2] = bSum / count;
+        tmp[p + 3] = aSum / count;
+        // Slide window
+        const rm = Math.max(0, Math.min(h - 1, y - r));
+        const ad = Math.max(0, Math.min(h - 1, y + r + 1));
+        const rmp = (rm * w + x) * 4;
+        const adp = (ad * w + x) * 4;
+        rSum += dst[adp] - dst[rmp];
+        gSum += dst[adp + 1] - dst[rmp + 1];
+        bSum += dst[adp + 2] - dst[rmp + 2];
+        aSum += dst[adp + 3] - dst[rmp + 3];
       }
     }
     src = tmp;
     dst = src === bufA ? bufB : bufA;
   }
   for (let i = 0; i < d.length; i++) d[i] = src[i];
+  releaseBuffer(bufA, w, h);
+  releaseBuffer(bufB, w, h);
 }
 
 function chromaticAberration(img: ImageData, w: number, h: number, amount: number): void {
   const d = img.data;
-  const out = new Uint8ClampedArray(d.length);
+  const out = getBuffer(w, h);
   const px = Math.round(amount);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -109,6 +160,7 @@ function chromaticAberration(img: ImageData, w: number, h: number, amount: numbe
     }
   }
   for (let i = 0; i < d.length; i++) d[i] = out[i];
+  releaseBuffer(out, w, h);
 }
 
 function waveDistort(
@@ -116,7 +168,7 @@ function waveDistort(
   amount: number, freq: number,
 ): void {
   const d = img.data;
-  const out = new Uint8ClampedArray(d.length);
+  const out = getBuffer(w, h);
   const period = (2 * Math.PI * freq) / w;
   for (let y = 0; y < h; y++) {
     const shift = Math.round(amount * Math.sin(y * period));
@@ -129,11 +181,14 @@ function waveDistort(
     }
   }
   for (let i = 0; i < d.length; i++) d[i] = out[i];
+  releaseBuffer(out, w, h);
 }
 
 function glitch(img: ImageData, w: number, h: number, amount: number): void {
   const d = img.data;
-  const src = new Uint8ClampedArray(d); // read from a copy so bands don't compound
+  const src = getBuffer(w, h);
+  // Copy current data to src buffer
+  src.set(d);
   const intensity = amount / 100;
   const bands = Math.floor(h / 20);
   for (let b = 0; b < bands; b++) {
@@ -157,9 +212,12 @@ function glitch(img: ImageData, w: number, h: number, amount: number): void {
       if (x >= w - off) continue;
       const si = i + off * 4;
       if (si >= d.length) continue;
-      d[i] = src[si];
+      // RGB split: shift red right, blue left
+      d[i] = src[si];                    // red from shifted position
+      d[i + 2] = src[Math.max(0, i - off * 4) + 2]; // blue from opposite shift
     }
   }
+  releaseBuffer(src, w, h);
 }
 
 function filmGrain(img: ImageData, amount: number): void {
@@ -176,8 +234,9 @@ function filmGrain(img: ImageData, amount: number): void {
 function bloom(img: ImageData, w: number, h: number, amount: number): void {
   const d = img.data;
   const a = amount / 100;
-  const out = new Uint8ClampedArray(d.length);
-  const r = 3;
+  const out = getBuffer(w, h);
+  const r = Math.max(1, Math.round(3 * (w / 1920))); // Scale radius with width
+  const threshold = 160; // Could be made configurable
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       let rr = 0, gg = 0, bb = 0, cnt = 0;
@@ -186,8 +245,8 @@ function bloom(img: ImageData, w: number, h: number, amount: number): void {
           const sx = Math.max(0, Math.min(w - 1, x + dx));
           const sy = Math.max(0, Math.min(h - 1, y + dy));
           const p = (sy * w + sx) * 4;
-          const lum = (d[p] + d[p + 1] + d[p + 2]) / 3;
-          if (lum > 160) {
+          const lum = (0.299 * d[p] + 0.587 * d[p + 1] + 0.114 * d[p + 2]); // Perceptual luminance
+          if (lum > threshold) {
             rr += d[p]; gg += d[p + 1]; bb += d[p + 2]; cnt++;
           }
         }
@@ -206,6 +265,7 @@ function bloom(img: ImageData, w: number, h: number, amount: number): void {
   for (let i = 0; i < d.length; i += 4) {
     d[i] = out[i]; d[i + 1] = out[i + 1]; d[i + 2] = out[i + 2];
   }
+  releaseBuffer(out, w, h);
 }
 
 function halftone(img: ImageData, w: number, h: number): void {
@@ -266,13 +326,23 @@ function duotone(
 ): void {
   if (intensity <= 0) return;
   const d = img.data;
-  const a = Math.min(intensity, 100) / 100;
-  const ar = parseInt(colA.slice(1, 3), 16);
-  const ag = parseInt(colA.slice(3, 5), 16);
-  const ab = parseInt(colA.slice(5, 7), 16);
-  const br = parseInt(colB.slice(1, 3), 16);
-  const bg = parseInt(colB.slice(3, 5), 16);
-  const bb = parseInt(colB.slice(5, 7), 16);
+  const a = Math.min(Math.max(intensity, 0), 100) / 100;
+
+  // Validate and parse hex colors
+  const parseHex = (hex: string): [number, number, number] => {
+    let h = hex.replace(/^#/, "");
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    const m = /^([0-9a-f]{6})$/i.exec(h);
+    if (!m) {
+      console.warn(`Invalid hex color "${hex}" for duotone, using black`);
+      return [0, 0, 0];
+    }
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  };
+
+  const [ar, ag, ab] = parseHex(colA);
+  const [br, bg, bb] = parseHex(colB);
   const twin = mode === 1;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2];

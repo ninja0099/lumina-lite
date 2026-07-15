@@ -7,6 +7,8 @@ export type LayerKey = "background" | "pattern" | "text";
 
 export type BgMode = "linear" | "mesh";
 
+export type MeshMode = "stacked" | "merge";
+
 export interface MeshNode {
   x: number; // center x, percent of width (0-100)
   y: number; // center y, percent of height (0-100)
@@ -75,7 +77,7 @@ export interface DesignState {
 
   bgMode: BgMode;
   meshNodes: MeshNode[];
-  meshMode: "stacked" | "merge"; // stacked: later node paints over earlier; merge: nodes blend additively (equal weight)
+  meshMode: MeshMode;
   meshSpread: number;
   meshBlur: number;
   meshBaseOpacity: number; // alpha of the solid base fill (0 = transparent)
@@ -92,6 +94,7 @@ export interface DesignState {
 
   pattern: PatternName;
   patternColor: string;
+  patternOpacity: number;
   glassPanel: boolean;
   borderGlow: boolean;
 
@@ -220,6 +223,7 @@ export function createDefaultState(): DesignState {
 
     pattern: "None",
     patternColor: "#ffffff",
+    patternOpacity: 1,
     glassPanel: false,
     borderGlow: false,
 

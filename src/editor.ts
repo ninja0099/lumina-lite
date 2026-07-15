@@ -11,10 +11,10 @@ let meshOffscreen: HTMLCanvasElement | null = null;
 let bgImageOffscreen: HTMLCanvasElement | null = null;
 export function setBgImage(dataUrl: string | null): Promise<void> {
   if (!dataUrl) { bgImg = null; return Promise.resolve(); }
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => { bgImg = img; resolve(); };
-    img.onerror = () => { bgImg = null; resolve(); };
+    img.onerror = () => { bgImg = null; reject(new Error("Background image failed to load")); };
     img.src = dataUrl;
   });
 }
@@ -268,9 +268,15 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     octx.rotate(rot);
     if (s.bgImageFit === "tile") {
       const tile = Math.max(40, Math.min(w, h) * 0.2);
-      for (let ty = -h; ty < h; ty += tile)
-        for (let tx = -w; tx < w; tx += tile)
+      const cols = Math.ceil(w / tile) + 2;
+      const rows = Math.ceil(h / tile) + 2;
+      for (let iy = 0; iy < rows; iy++) {
+        const ty = (iy - 1) * tile - tile / 2;
+        for (let ix = 0; ix < cols; ix++) {
+          const tx = (ix - 1) * tile - tile / 2;
           octx.drawImage(bgImg, tx, ty, tile, tile);
+        }
+      }
     } else {
       let iw: number, ih: number;
       if (s.bgImageFit === "stretch") { iw = w; ih = h; }
@@ -305,12 +311,23 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
   // Apply background effects once, after all background layers are composed
   // (bg image, gradient, mesh). This prevents double-application when both
   // bg image and mesh are active.
-  if (s.layers.background && (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0)) {
+  const hasPixelEffect =
+    s.bgBlur > 0 ||
+    s.bgChromatic > 0 ||
+    s.bgWaveAmount > 0 ||
+    s.bgGlitch > 0 ||
+    s.bgFilmGrain > 0 ||
+    s.bgBloom > 0 ||
+    s.bgHalftone ||
+    s.bgPixelate ||
+    s.duotoneIntensity > 0;
+
+  if (s.layers.background && (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0 || hasPixelEffect)) {
     applyBackgroundEffects(ctx, w, h, s);
   }
 
   if (s.layers.pattern && s.pattern !== "None") {
-    drawPattern(ctx, w, h, s.pattern, s.patternColor);
+    drawPattern(ctx, w, h, s.pattern, s.patternColor, s.patternOpacity);
   }
 }
 
@@ -463,6 +480,7 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
       // Glow: draw a second pass with glow settings to preserve shadow
       if (s.textShadow) {
         // Render shadow pass first
+        ctx.globalAlpha = Math.max(0, Math.min(1, s.textOpacity));
         ctx.fillStyle = fill;
         ctx.fillText(lines[i], x, ly);
         // Then glow pass
@@ -476,8 +494,6 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
           ctx.lineJoin = "round";
           ctx.strokeText(lines[i], x, ly);
         }
-        if (rot !== 0) ctx.restore();
-        ctx.globalAlpha = 1;
         continue;
       } else {
         ctx.shadowColor = s.textColor;
@@ -516,7 +532,8 @@ function hexWithAlpha(hex: string, a: number): string {
 
 export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignState) {
   stateRef = getState();
-  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) throw new Error("Canvas 2D context unavailable");
   let PW = 960;
   let PH = 540;
 
@@ -539,20 +556,20 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
   function render(): void {
     rafId = 0;
     const state = getState();
+    if (!ctx) return;
     if (state.bgMode === "mesh" && state.meshAnim) {
       animationPhase = ((performance.now() / 1000) % state.meshAnimDuration) /
         Math.max(1, state.meshAnimDuration);
       paint(ctx, canvas.width, canvas.height, state);
       drawNodeHandles(ctx, canvas.width, canvas.height, state);
-      // keep looping while animation is active
       rafId = requestAnimationFrame(() => render());
       return;
     }
     paint(ctx, canvas.width, canvas.height, state);
     if (state.bgMode === "mesh") drawNodeHandles(ctx, canvas.width, canvas.height, state);
     if (!warmedFonts.has(state.font)) {
-      warmedFonts.add(state.font);
       ensureFont(state.font, state.weight).then(() => {
+        warmedFonts.add(state.font);
         startLoop();
       });
     }
@@ -571,7 +588,8 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     const out = document.createElement("canvas");
     out.width = exportW;
     out.height = exportH;
-    const octx = out.getContext("2d")!;
+    const octx = out.getContext("2d");
+    if (!octx) throw new Error("Export canvas 2D context unavailable");
     const prev = animationPhase;
     animationPhase = phase;
     paint(octx, exportW, exportH, s);
@@ -579,7 +597,12 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     const mime =
       s.exportFormat === "jpeg" ? "image/jpeg" : s.exportFormat === "webp" ? "image/webp" : "image/png";
     const ext = s.exportFormat === "jpeg" ? "jpg" : s.exportFormat;
-    const url = out.toDataURL(mime);
+    let url: string;
+    try {
+      url = out.toDataURL(mime);
+    } catch {
+      url = out.toDataURL("image/png");
+    }
     const a = document.createElement("a");
     a.href = url;
     a.download = outFileName ? `${outFileName}.${ext}` : `lumina-lite.${ext}`;
@@ -591,7 +614,8 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     const out = document.createElement("canvas");
     out.width = exportW;
     out.height = exportH;
-    const octx = out.getContext("2d")!;
+    const octx = out.getContext("2d");
+    if (!octx) return false;
     const prev = animationPhase;
     animationPhase = phase;
     paint(octx, exportW, exportH, s);
@@ -618,7 +642,8 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
       out.width = exportW;
       out.height = exportH;
     }
-    const octx = out.getContext("2d")!;
+    const octx = out.getContext("2d");
+    if (!octx) throw new Error("Canvas 2D context unavailable");
     const prev = animationPhase;
     animationPhase = t;
     paint(octx, exportW, exportH, s);
@@ -634,6 +659,8 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
   ): Promise<void> {
     // Stop live render loop to prevent animationPhase race with export.
     if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    let encoder: VideoEncoder | null = null;
+    let muxer: any = null;
     try {
       const s = getState();
       const dur = s.meshAnimDuration;
@@ -645,14 +672,14 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
         throw new Error("MP4 export requires a browser with WebCodecs (recent Chrome/Edge/Safari).");
       }
       const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
-      const muxer = new Muxer({
+      muxer = new Muxer({
         target: new ArrayBufferTarget(),
         video: { codec: "avc", width: exportW, height: exportH, frameRate: fps },
         fastStart: "in-memory",
       });
-      const encoder = new VideoEncoder({
+      encoder = new VideoEncoder({
         output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => console.error("VideoEncoder error", e),
+        error: (e) => { throw new Error("VideoEncoder error: " + (e instanceof Error ? e.message : String(e))); },
       });
       encoder.configure({
         codec: "avc1.640033",
@@ -696,7 +723,18 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
       muxer.finalize();
       const { buffer } = muxer.target;
       downloadBlob(new Blob([buffer], { type: "video/mp4" }), outFileName);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert("Export failed: " + msg);
+      throw err;
     } finally {
+      // Clean up encoder/muxer on error to prevent resource leaks
+      if (encoder) {
+        try { encoder.close(); } catch {}
+      }
+      if (muxer) {
+        try { muxer.finalize(); } catch {}
+      }
       // Restart live render loop (was cancelled at export start).
       scheduleDraw();
     }
@@ -724,6 +762,13 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
       exportH = h;
       setDesignWidth(w);
       updateCanvasSize();
+    },
+    destroy() {
+      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      meshOffscreen = null;
+      bgImageOffscreen = null;
+      bgImg = null;
+      stateRef = null;
     },
   };
 }

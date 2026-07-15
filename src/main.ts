@@ -96,6 +96,7 @@ const binders: Binder[] = [
   { id: "duotoneColorA", apply: (s, v) => (s.duotoneColorA = String(v)) },
   { id: "duotoneColorB", apply: (s, v) => (s.duotoneColorB = String(v)) },
   { id: "duotoneIntensity", apply: (s, v) => (s.duotoneIntensity = Number(v)) },
+  { id: "patternOpacity", apply: (s, v) => (s.patternOpacity = Number(v)) },
   { id: "exportFormat", apply: (s, v) => (s.exportFormat = String(v) as DesignState["exportFormat"]) },
 ];
 
@@ -293,7 +294,7 @@ fontSizeUnitEl.addEventListener("change", () => {
 type Unit = "weight" | "px" | "ratio" | "pct";
 type UnitSlider = {
   id: string;
-  stateKey: string;
+  stateKey: keyof DesignState;
   unitId: string;
   nativeUnit: Unit;
   nativeRange: [number, number];
@@ -314,6 +315,13 @@ const unitSliders: UnitSlider[] = [
     altUnit: "px", altRange: [400, 900], altStep: 0.05,
     ref: () => 0, toAlt: (w) => w, toNative: (px) => px,
     fmt: (s) => `${s.weightUnit === "px" ? s.weight.toFixed(2) + "px" : Math.round(s.weight)}`,
+  },
+  {
+    id: "patternOpacity", stateKey: "patternOpacity", unitId: "",
+    nativeUnit: "ratio", nativeRange: [0, 1], nativeStep: 0.01,
+    altUnit: "ratio", altRange: [0, 1], altStep: 0.01,
+    ref: () => 1, toAlt: (v) => v, toNative: (v) => v,
+    fmt: (s) => `${Math.round(s.patternOpacity * 100)}%`,
   },
   {
     id: "spacing", stateKey: "letterSpacing", unitId: "letterSpacingUnit",
@@ -350,6 +358,7 @@ const unitSliders: UnitSlider[] = [
 ];
 
 function isNativeUnit(us: UnitSlider): boolean {
+  if (!us.unitId) return true;
   return (state as unknown as Record<string, string>)[us.unitId] === us.nativeUnit;
 }
 
@@ -382,13 +391,15 @@ for (const us of unitSliders) {
     editor.scheduleDraw();
   });
   el.addEventListener("change", () => pushHistory());
-  $<HTMLSelectElement>(us.unitId).addEventListener("change", () => {
-    (state as unknown as Record<string, string>)[us.unitId] =
-      $<HTMLSelectElement>(us.unitId).value;
-    configureUnitSlider(us);
-    editor.scheduleDraw();
-    pushHistory();
-  });
+  if (us.unitId) {
+    $<HTMLSelectElement>(us.unitId).addEventListener("change", () => {
+      (state as unknown as Record<string, string>)[us.unitId] =
+        $<HTMLSelectElement>(us.unitId).value;
+      configureUnitSlider(us);
+      editor.scheduleDraw();
+      pushHistory();
+    });
+  }
 }
 
 // Angle labels append the degree symbol
@@ -652,7 +663,7 @@ function renderPresets(): void {
     tile.addEventListener("click", (ev) => {
       if (ev.target === menuBtn) return;
       closeMenu();
-      Object.assign(state, structuredClone(p.apply));
+      Object.assign(state, createDefaultState(), structuredClone(p.apply));
       commitResolution(state.exportW, state.exportH);
       syncInputsFromState();
       state.activePreset = p.id;
@@ -747,6 +758,7 @@ function syncInputsFromState() {
   fontSizeUnitEl.value = state.fontSizeUnit;
   configureFontSizeSlider();
   for (const us of unitSliders) {
+    if (!us.unitId) continue;
     $<HTMLSelectElement>(us.unitId).value = (state as unknown as Record<string, string>)[us.unitId];
   }
   reconfigureAllUnitSliders();
@@ -891,7 +903,7 @@ function syncMeshUI(): void {
   $("meshModeStacked").classList.toggle("active", state.meshMode === "stacked");
   $("meshModeMerge").classList.toggle("active", state.meshMode === "merge");
   renderNodeList();
-  // Rebind Coloris for dynamically created node-list swatches, then init swatches
+  // Re-initialize Coloris on newly created .coloris inputs so .clr-field wrapper is created
   Coloris({ el: ".coloris" });
   initColorSwatches();
   const sel = getSelectedNode();
@@ -1433,8 +1445,8 @@ canvas.addEventListener("pointerdown", (e) => {
   if (hit >= 0) {
     selectNode(hit);
     canvas.setPointerCapture(e.pointerId);
-    const idx = hit; // freeze: a selection reset (e.g. Ctrl+Z mid-drag) must not crash move
     const move = (ev: PointerEvent) => {
+      const idx = getSelectedNode(); // Always read current selection, not frozen closure
       const node = state.meshNodes[idx];
       if (!node) return;
       const q = canvasPoint(ev);

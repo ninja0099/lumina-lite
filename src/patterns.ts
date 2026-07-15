@@ -48,11 +48,13 @@ export function drawPattern(
   h: number,
   name: PatternName,
   color: string,
+  opacity: number = 1,
 ): void {
   if (name === "None") return;
 
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = opacity;
 
   if (name === "Vignette") {
     const g = ctx.createRadialGradient(
@@ -63,8 +65,13 @@ export function drawPattern(
       h / 2,
       Math.max(w, h) * 0.75,
     );
+    // Convert hex to rgba with 0.55 alpha for the vignette edge
+    const hex = color.replace(/^#/, "");
+    const r = parseInt(hex.substring(0, 2), 16) || 0;
+    const gv = parseInt(hex.substring(2, 4), 16) || 0;
+    const b = parseInt(hex.substring(4, 6), 16) || 0;
     g.addColorStop(0, "rgba(0,0,0,0)");
-    g.addColorStop(1, "rgba(0,0,0,0.55)");
+    g.addColorStop(1, `rgba(${r},${gv},${b},0.55)`);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
@@ -87,7 +94,7 @@ export function drawPattern(
   switch (name) {
     case "Liquid Glass (Apple)": {
       // Soft blurred blobs suggesting frosted glass.
-      ctx.globalAlpha = 0.12;
+      ctx.globalAlpha *= 0.12;
       const blobs = 6;
       for (let i = 0; i < blobs; i++) {
         const cx = (w / blobs) * (i + 0.5);
@@ -105,7 +112,7 @@ export function drawPattern(
     }
     case "Dots": {
       const step = w / 40;
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha *= 0.5;
       for (let y = step / 2; y < h; y += step)
         for (let x = step / 2; x < w; x += step) {
           ctx.beginPath();
@@ -115,7 +122,7 @@ export function drawPattern(
       break;
     }
     case "Grid": {
-      ctx.globalAlpha = 0.35;
+      ctx.globalAlpha *= 0.35;
       const step = w / 32;
       for (let x = 0; x <= w; x += step) {
         ctx.beginPath();
@@ -133,26 +140,26 @@ export function drawPattern(
     }
     case "Checker": {
       const step = w / 24;
-      ctx.globalAlpha = 0.25;
+      ctx.globalAlpha *= 0.25;
       for (let y = 0; y < h; y += step)
         for (let x = 0; x < w; x += step)
           if (((x / step + y / step) | 0) % 2 === 0) ctx.fillRect(x, y, step, step);
       break;
     }
     case "Lines — Horizontal":
-      ctx.globalAlpha = 0.3;
+      ctx.globalAlpha *= 0.3;
       lineRow(ctx, w, h);
       break;
     case "Lines — Vertical":
-      ctx.globalAlpha = 0.3;
+      ctx.globalAlpha *= 0.3;
       lineCol(ctx, w, h);
       break;
     case "Lines — Diagonal":
-      ctx.globalAlpha = 0.25;
+      ctx.globalAlpha *= 0.25;
       drawDiagonal(ctx, w, h);
       break;
     case "Crosshatch":
-      ctx.globalAlpha = 0.2;
+      ctx.globalAlpha *= 0.2;
       drawDiagonal(ctx, w, h);
       ctx.save();
       ctx.translate(w, 0);
@@ -161,29 +168,33 @@ export function drawPattern(
       ctx.restore();
       break;
     case "Hexagons":
-      ctx.globalAlpha = 0.3;
+      ctx.globalAlpha *= 0.3;
       drawHexagons(ctx, w, h);
       break;
     case "Triangles":
-      ctx.globalAlpha = 0.28;
+      ctx.globalAlpha *= 0.28;
       drawTriangles(ctx, w, h);
       break;
     case "Waves":
-      ctx.globalAlpha = 0.3;
+      ctx.globalAlpha *= 0.3;
       drawWaves(ctx, w, h);
       break;
     case "Circuit":
-      ctx.globalAlpha = 0.3;
+      ctx.globalAlpha *= 0.3;
       drawCircuit(ctx, w, h);
       break;
     case "Stars":
-      ctx.globalAlpha = 0.45;
+      ctx.globalAlpha *= 0.45;
       drawStars(ctx, w, h);
       break;
     case "Scanlines":
-      ctx.globalAlpha = 0.18;
+      ctx.globalAlpha *= 0.18;
       for (let y = 0; y < h; y += w / 60) ctx.fillRect(0, y, w, Math.max(1, Math.min(w / 240, 2)));
       break;
+    default:
+      // Exhaustiveness check — TypeScript will error if a new PatternName is added but not handled
+      const _exhaustive: never = name;
+      return _exhaustive;
   }
 
   ctx.restore();

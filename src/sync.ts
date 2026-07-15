@@ -30,7 +30,7 @@ function seed(): StoredPreset[] {
   return PRESETS.map((p) => ({
     id: p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
     name: p.name,
-    apply: p.apply,
+    apply: structuredClone(p.apply),
     createdAt: 0,
     updatedAt: 0,
   }));
@@ -66,9 +66,14 @@ export function loadPresets(): StoredPreset[] {
   }
 }
 
+let saveDebounce: ReturnType<typeof setTimeout> | null = null;
+
 export function savePresets(list: StoredPreset[]): void {
   writeLocal(list);
-  pushQueue = pushQueue.then(() => pushToServer());
+  if (saveDebounce) clearTimeout(saveDebounce);
+  saveDebounce = setTimeout(() => {
+    pushQueue = pushQueue.then(() => pushToServer());
+  }, 300);
 }
 
 let pushQueue: Promise<void> = Promise.resolve();
@@ -99,6 +104,11 @@ export async function initSync(): Promise<void> {
       return;
     }
     const data = (await res.json()) as { rev: number; presets: StoredPreset[] };
+    // Validate response shape
+    if (!data || typeof data.rev !== "number" || !Array.isArray(data.presets)) {
+      notify("offline");
+      return;
+    }
     setRev(data.rev);
     if (data.presets && data.presets.length > 0) {
       // Merge: server presets overlaid with local versions (by id), plus local-only presets
@@ -144,12 +154,20 @@ async function pushToServer(): Promise<void> {
       setRev(data.rev);
       notify("synced");
     } else if (res.status === 409) {
-      // Out of date: adopt server copy, tell the user their edits were replaced.
+      // Out of date: adopt server copy but preserve local-only presets.
       const data = (await res.json()) as { rev: number; presets: StoredPreset[] };
       setRev(data.rev);
-      writeLocal(data.presets ?? loadPresets());
+      const server = data.presets ?? [];
+      const local = loadPresets();
+      const serverIds = new Set(server.map(p => p.id));
+      const localOnly = local.filter(p => !serverIds.has(p.id));
+      writeLocal([...server, ...localOnly]);
       onChange?.();
       notify("conflict", "Presets changed on another device — refreshed to match.");
+    } else {
+      // Non-409 error: surface it so the user knows sync failed.
+      const msg = `Sync failed: ${res.status} ${res.statusText}`;
+      notify("offline", msg);
     }
   } catch {
     notify("offline");
