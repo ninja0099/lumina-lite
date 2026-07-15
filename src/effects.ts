@@ -262,11 +262,11 @@ function drawVignette(ctx: CanvasRenderingContext2D, w: number, h: number, amoun
 
 function duotone(
   img: ImageData,
-  mode: number, colA: string, colB: string, intensity: number,
+  mode: 0 | 1, colA: string, colB: string, intensity: number,
 ): void {
   if (intensity <= 0) return;
   const d = img.data;
-  const a = intensity / 100;
+  const a = Math.min(intensity, 100) / 100;
   const ar = parseInt(colA.slice(1, 3), 16);
   const ag = parseInt(colA.slice(3, 5), 16);
   const ab = parseInt(colA.slice(5, 7), 16);

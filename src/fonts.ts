@@ -18,9 +18,16 @@ export async function ensureFont(family: string, weight = 700): Promise<void> {
     link.rel = "stylesheet";
     link.href = url;
     document.head.appendChild(link);
-    await document.fonts.load(`${weight} 1em "${family}"`).catch(() => {});
+    // Wait for the stylesheet to load, then for the font to be ready.
+    // If either fails, do NOT mark as loaded so we can retry on next use.
+    await new Promise<void>((resolve, reject) => {
+      link.onload = () => resolve();
+      link.onerror = () => reject(new Error("Font stylesheet failed to load"));
+    });
+    await document.fonts.load(`${weight} 1em "${family}"`);
     loaded.add(family);
   } catch {
     // Fall back to system font if fetch fails; do NOT block rendering.
+    // Font is NOT added to loaded set — will retry on next call.
   }
 }

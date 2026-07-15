@@ -8,6 +8,7 @@ let exportH = 1080;
 
 let bgImg: HTMLImageElement | null = null;
 let meshOffscreen: HTMLCanvasElement | null = null;
+let bgImageOffscreen: HTMLCanvasElement | null = null;
 export function setBgImage(dataUrl: string | null): Promise<void> {
   if (!dataUrl) { bgImg = null; return Promise.resolve(); }
   return new Promise((resolve) => {
@@ -196,10 +197,6 @@ function paintMesh(
   octx.globalCompositeOperation = "source-over";
 
   ctx.drawImage(off, 0, 0);
-
-  if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
-    applyBackgroundEffects(ctx, w, h, s);
-  }
 }
 
 let selectedNode = -1;
@@ -256,10 +253,15 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     const cy = h * (s.bgImageY / 100);
     const rot = (s.bgImageRotation * Math.PI) / 180;
 
-    const off = document.createElement("canvas");
-    off.width = w;
-    off.height = h;
+    // Cache offscreen canvas for bg image (like meshOffscreen)
+    if (!bgImageOffscreen || bgImageOffscreen.width !== w || bgImageOffscreen.height !== h) {
+      bgImageOffscreen = document.createElement("canvas");
+      bgImageOffscreen.width = w;
+      bgImageOffscreen.height = h;
+    }
+    const off = bgImageOffscreen;
     const octx = off.getContext("2d")!;
+    octx.clearRect(0, 0, w, h);
     octx.save();
     octx.globalAlpha = Math.max(0, Math.min(1, s.bgImageOpacity));
     octx.translate(cx, cy);
@@ -283,9 +285,6 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
       octx.drawImage(bgImg, -iw / 2, -ih / 2, iw, ih);
     }
     octx.restore();
-    if (s.bgBlur > 0 || s.bgChromatic > 0 || s.bgWaveAmount > 0 || s.bgGlitch > 0 || s.bgFilmGrain > 0 || s.bgVignette > 0 || s.bgBloom > 0 || s.bgHalftone || s.bgPixelate || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
-      applyBackgroundEffects(octx, w, h, s);
-    }
     ctx.drawImage(off, 0, 0);
 
     if (s.bgGradient) {
@@ -297,13 +296,17 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     if (s.bgGradient) {
       paintBaseGradient(ctx, w, h, s);
     }
-    if (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0) {
-      applyBackgroundEffects(ctx, w, h, s);
-    }
   }
 
   if (s.layers.background && s.bgMode === "mesh") {
     paintMesh(ctx, w, h, s, animationPhase);
+  }
+
+  // Apply background effects once, after all background layers are composed
+  // (bg image, gradient, mesh). This prevents double-application when both
+  // bg image and mesh are active.
+  if (s.layers.background && (s.bgVignette > 0 || s.bgLongShadow || s.bgEcho > 0 || s.duotoneIntensity > 0)) {
+    applyBackgroundEffects(ctx, w, h, s);
   }
 
   if (s.layers.pattern && s.pattern !== "None") {
@@ -457,8 +460,29 @@ function drawText(ctx: CanvasRenderingContext2D, w: number, h: number, s: Design
       ctx.shadowBlur = s.shadowBlur * scale;
     }
     if (s.textGlow) {
-      ctx.shadowColor = s.textColor;
-      ctx.shadowBlur = Math.max(ctx.shadowBlur, w / 12);
+      // Glow: draw a second pass with glow settings to preserve shadow
+      if (s.textShadow) {
+        // Render shadow pass first
+        ctx.fillStyle = fill;
+        ctx.fillText(lines[i], x, ly);
+        // Then glow pass
+        ctx.shadowColor = s.textColor;
+        ctx.shadowBlur = w / 12;
+        ctx.fillStyle = fill;
+        ctx.fillText(lines[i], x, ly);
+        if (s.textOutline) {
+          ctx.lineWidth = Math.max(1, s.textOutlineWidth * scale);
+          ctx.strokeStyle = s.textOutlineColor;
+          ctx.lineJoin = "round";
+          ctx.strokeText(lines[i], x, ly);
+        }
+        if (rot !== 0) ctx.restore();
+        ctx.globalAlpha = 1;
+        continue;
+      } else {
+        ctx.shadowColor = s.textColor;
+        ctx.shadowBlur = w / 12;
+      }
     }
 
     ctx.globalAlpha = Math.max(0, Math.min(1, s.textOpacity));
@@ -610,69 +634,72 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
   ): Promise<void> {
     // Stop live render loop to prevent animationPhase race with export.
     if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-    const s = getState();
-    const dur = s.meshAnimDuration;
-    const frames = Math.max(4, Math.round(fps * dur));
-    if (onProgress) onProgress(0, frames, "Rendering frames");
+    try {
+      const s = getState();
+      const dur = s.meshAnimDuration;
+      const frames = Math.max(4, Math.round(fps * dur));
+      if (onProgress) onProgress(0, frames, "Rendering frames");
 
-    // MP4 via WebCodecs
-    if (typeof VideoEncoder === "undefined") {
-      throw new Error("MP4 export requires a browser with WebCodecs (recent Chrome/Edge/Safari).");
-    }
-    const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
-    const muxer = new Muxer({
-      target: new ArrayBufferTarget(),
-      video: { codec: "avc", width: exportW, height: exportH, frameRate: fps },
-      fastStart: "in-memory",
-    });
-    const encoder = new VideoEncoder({
-      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: (e) => console.error("VideoEncoder error", e),
-    });
-    encoder.configure({
-      codec: "avc1.640033",
-      width: exportW,
-      height: exportH,
-      bitrate: bitrateMbps * 1_000_000,
-      framerate: fps,
-    });
-    // Reuse one canvas across all frames — allocation-free render loop.
-    const renderCanvas = document.createElement("canvas");
-    renderCanvas.width = exportW;
-    renderCanvas.height = exportH;
-    // Yield via a MessageChannel — gives the browser a real macrotask to flush
-    // pending DOM/UI work without paying rAF's 16ms floor. This is what makes
-    // the "Encoding X/Y" counter update per frame instead of in batches.
-    const nextTick = () =>
-      new Promise<void>((resolve) => {
-        const ch = new MessageChannel();
-        ch.port1.onmessage = () => resolve();
-        ch.port2.postMessage(0);
-      });
-    for (let i = 0; i < frames; i++) {
-      paintFrame(i / frames, renderCanvas);
-      const frame = new VideoFrame(renderCanvas, {
-        timestamp: (i * 1_000_000) / fps,
-        duration: 1_000_000 / fps,
-      });
-      try {
-        encoder.encode(frame, { keyFrame: i % fps === 0 });
-      } finally {
-        frame.close();
+      // MP4 via WebCodecs
+      if (typeof VideoEncoder === "undefined") {
+        throw new Error("MP4 export requires a browser with WebCodecs (recent Chrome/Edge/Safari).");
       }
-      if (onProgress) onProgress(i + 1, frames, "Encoding");
-      // Yield after every frame so the status text paints per-frame.
-      // MessageChannel is a real macrotask that flushes pending UI work
-      // without paying rAF's 16ms floor. Doubles as backpressure — the
-      // encoder catches up before we submit the next frame.
-      await nextTick();
+      const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
+      const muxer = new Muxer({
+        target: new ArrayBufferTarget(),
+        video: { codec: "avc", width: exportW, height: exportH, frameRate: fps },
+        fastStart: "in-memory",
+      });
+      const encoder = new VideoEncoder({
+        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+        error: (e) => console.error("VideoEncoder error", e),
+      });
+      encoder.configure({
+        codec: "avc1.640033",
+        width: exportW,
+        height: exportH,
+        bitrate: bitrateMbps * 1_000_000,
+        framerate: fps,
+      });
+      // Reuse one canvas across all frames — allocation-free render loop.
+      const renderCanvas = document.createElement("canvas");
+      renderCanvas.width = exportW;
+      renderCanvas.height = exportH;
+      // Yield via a MessageChannel — gives the browser a real macrotask to flush
+      // pending DOM/UI work without paying rAF's 16ms floor. This is what makes
+      // the "Encoding X/Y" counter update per frame instead of in batches.
+      const nextTick = () =>
+        new Promise<void>((resolve) => {
+          const ch = new MessageChannel();
+          ch.port1.onmessage = () => resolve();
+          ch.port2.postMessage(0);
+        });
+      for (let i = 0; i < frames; i++) {
+        paintFrame(i / frames, renderCanvas);
+        const frame = new VideoFrame(renderCanvas, {
+          timestamp: (i * 1_000_000) / fps,
+          duration: 1_000_000 / fps,
+        });
+        try {
+          encoder.encode(frame, { keyFrame: i % fps === 0 });
+        } finally {
+          frame.close();
+        }
+        if (onProgress) onProgress(i + 1, frames, "Encoding");
+        // Yield after every frame so the status text paints per-frame.
+        // MessageChannel is a real macrotask that flushes pending UI work
+        // without paying rAF's 16ms floor. Doubles as backpressure — the
+        // encoder catches up before we submit the next frame.
+        await nextTick();
+      }
+      await encoder.flush();
+      muxer.finalize();
+      const { buffer } = muxer.target;
+      downloadBlob(new Blob([buffer], { type: "video/mp4" }), outFileName);
+    } finally {
+      // Restart live render loop (was cancelled at export start).
+      scheduleDraw();
     }
-    await encoder.flush();
-    muxer.finalize();
-    const { buffer } = muxer.target;
-    downloadBlob(new Blob([buffer], { type: "video/mp4" }), outFileName);
-    // Restart live render loop (was cancelled at export start).
-    scheduleDraw();
   }
 
   function downloadBlob(blob: Blob, name: string): void {

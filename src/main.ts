@@ -92,7 +92,7 @@ const binders: Binder[] = [
   { id: "bgBloom", apply: (s, v) => (s.bgBloom = Number(v)) },
   { id: "bgLongShadow", apply: (s, v) => (s.bgLongShadow = Boolean(v)) },
   { id: "bgEcho", apply: (s, v) => (s.bgEcho = Number(v)) },
-  { id: "bgDuotone", apply: (s, v) => (s.bgDuotone = Number(v)) },
+  { id: "bgDuotone", apply: (s, v) => (s.bgDuotone = Number(v) as 0 | 1) },
   { id: "duotoneColorA", apply: (s, v) => (s.duotoneColorA = String(v)) },
   { id: "duotoneColorB", apply: (s, v) => (s.duotoneColorB = String(v)) },
   { id: "duotoneIntensity", apply: (s, v) => (s.duotoneIntensity = Number(v)) },
@@ -482,7 +482,7 @@ function applyResolution(w: number, h: number, label?: string): void {
   if (k !== 1 || kh !== 1) {
     state.fontSize *= k;
     for (const f of EXPORT_PX_FIELDS) (state as unknown as Record<string, number>)[f] *= k;
-    if (state.letterSpacingUnit === "px") state.letterSpacing *= kh;
+    if (state.letterSpacingUnit === "px") state.letterSpacing *= k;
     if (state.posXUnit === "px") state.posX *= k;
     if (state.posYUnit === "px") state.posY *= kh;
   }
@@ -819,14 +819,19 @@ $<HTMLInputElement>("bgImageFile").addEventListener("change", (e) => {
   reader.readAsDataURL(file);
 });
 
-// History (undo/redo)
+// History (undo/redo) — capped at 100 entries to bound memory.
 const history: DesignState[] = [structuredClone(state)];
 let histIdx = 0;
+const MAX_HISTORY = 100;
 
 function pushHistory() {
   history.splice(histIdx + 1);
   history.push(structuredClone(state));
   histIdx = history.length - 1;
+  if (history.length > MAX_HISTORY) {
+    history.shift();
+    histIdx--;
+  }
   updateHistoryButtons();
 }
 
@@ -985,6 +990,7 @@ function renderNodeList(): void {
       lock.innerHTML = n.locked ? LOCK_SVG : UNLOCK_SVG;
       lock.title = n.locked ? "Unlock color (palette refresh will change it)" : "Lock color (palette refresh will skip it)";
       lock.classList.toggle("locked", !!n.locked);
+      pushHistory();
     });
 
     row.append(num, pick, r, o, soft, lock);
@@ -1110,15 +1116,12 @@ function oklabToLinearSrgb(L: number, a: number, b: number): [number, number, nu
 }
 // OKLCH -> sRGB hex lives in ./color. Imported at the top of this file.
 
-// Linear sRGB -> CIE XYZ (D65). Used in ΔE computation.
+// Linear sRGB -> CIE XYZ (D65). Input is already linear (from oklabToLinearSrgb).
 function linearSrgbToXyz(r: number, g: number, b: number): [number, number, number] {
-  const toLin = (v: number) =>
-    v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  const rl = toLin(r), gl = toLin(g), bl = toLin(b);
   return [
-    0.4124564 * rl + 0.3575761 * gl + 0.1804375 * bl,
-    0.2126729 * rl + 0.7151522 * gl + 0.0721750 * bl,
-    0.0193339 * rl + 0.1191920 * gl + 0.9503041 * bl,
+    0.4124564 * r + 0.3575761 * g + 0.1804375 * b,
+    0.2126729 * r + 0.7151522 * g + 0.0721750 * b,
+    0.0193339 * r + 0.1191920 * g + 0.9503041 * b,
   ];
 }
 
@@ -1293,7 +1296,8 @@ function setNodeCount(n: number): void {
     cur.push({ x: 15 + ((k * 37) % 70), y: 15 + ((k * 53) % 70), color: colors[k], radius: 60, opacity: 1, softness: 0 });
   }
   if (cur.length > n) cur.length = n;
-  selectNode(Math.min(getSelectedNode() < 0 ? 0 : getSelectedNode(), n - 1));
+  const sel = getSelectedNode();
+  selectNode(Math.min(sel < 0 ? 0 : sel, n - 1));
   syncMeshUI();
   pushHistory();
   editor.scheduleDraw();
@@ -1441,10 +1445,12 @@ canvas.addEventListener("pointerdown", (e) => {
     const up = () => {
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up);
+      canvas.removeEventListener("pointercancel", up);
       pushHistory();
     };
     canvas.addEventListener("pointermove", move);
     canvas.addEventListener("pointerup", up);
+    canvas.addEventListener("pointercancel", up);
   }
 });
 
@@ -1474,8 +1480,9 @@ function runExportMp4(): void {
     .exportAnimation(fps, bitrateMbps, outFileName, onProgress)
     .then(() => (status.textContent = "Done — file downloaded."))
     .catch((err) => {
-      status.textContent = (err as Error).message;
-      alert((err as Error).message);
+      const msg = err instanceof Error ? err.message : String(err);
+      status.textContent = msg;
+      alert(msg);
     })
     .finally(() => {
       btn.disabled = false;

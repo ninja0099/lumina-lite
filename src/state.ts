@@ -113,7 +113,7 @@ export interface DesignState {
   bgBloom: number;
   bgLongShadow: boolean;
   bgEcho: number;
-  bgDuotone: number;
+  bgDuotone: 0 | 1;
   duotoneColorA: string;
   duotoneColorB: string;
   duotoneIntensity: number;

@@ -402,7 +402,7 @@ input[type=range]:focus-visible {
 }
 
 /* Textarea & select */
-textarea, select {
+textarea {
   width: 100%;
   margin-top: 4px;
   background: var(--surface-2);
@@ -414,19 +414,28 @@ textarea, select {
   font-size: 12px;
   transition: border-color 0.15s;
 }
-textarea:focus, select:focus {
+textarea:focus, textarea:focus-visible {
   outline: none;
   border-color: var(--accent);
 }
-textarea:focus-visible, select:focus-visible {
+textarea:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-textarea:hover, select:hover {
+textarea:hover {
   border-color: var(--text-sec);
 }
 select {
   width: auto;
+  margin-top: 4px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12px;
+  transition: border-color 0.15s;
   -webkit-appearance: none;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237c8494'/%3E%3C/svg%3E");
@@ -434,6 +443,17 @@ select {
   background-position: right 10px center;
   padding-right: 28px;
   cursor: pointer;
+}
+select:focus, select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+select:hover {
+  border-color: var(--text-sec);
 }
 .stack select, .stack textarea { width: 100%; margin-top: 0; }
 input[type=file] {
@@ -610,12 +630,10 @@ input[type=number] {
   border-radius: 5px;
   padding: 8px 4px;
   font-size: 11px;
-  text-align: center;
   cursor: pointer;
   background: var(--surface-2);
   color: var(--text);
   white-space: nowrap;
-  text-overflow: ellipsis;
   transition: border-color 0.12s, background 0.12s;
 }
 .preset:hover { border-color: var(--accent); background: var(--surface-3); color: var(--text); }
@@ -643,7 +661,7 @@ input[type=number] {
 .preset-menu-btn:hover, .preset-menu-btn[aria-expanded="true"] { color: var(--accent); }
 .preset-menu {
   position: fixed; z-index: 100; min-width: 150px;
-  flex-direction: column; background: var(--surface-3);
+  display: flex; flex-direction: column; background: var(--surface-3);
   border: 1px solid var(--border); border-radius: 6px; padding: 4px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.5);
 }
@@ -758,7 +776,6 @@ input[type=number] {
     padding: 4px 16px calc(24px + env(safe-area-inset-bottom));
   }
 
-  .group-tabs { display: none; }
   .group-head { cursor: pointer; }
 }
 
