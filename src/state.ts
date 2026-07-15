@@ -85,6 +85,9 @@ export interface DesignState {
   meshAnimAmplitude: number;
   meshAnimDuration: number;
 
+  exportW: number;
+  exportH: number;
+
   exportFormat: "png" | "jpeg" | "webp";
 
   pattern: PatternName;
@@ -209,6 +212,9 @@ export function createDefaultState(): DesignState {
     meshAnimSpeed: 1,
     meshAnimAmplitude: 15,
     meshAnimDuration: 6,
+
+    exportW: 1920,
+    exportH: 1080,
 
     exportFormat: "png",
 

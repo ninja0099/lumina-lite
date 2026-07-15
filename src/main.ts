@@ -457,16 +457,9 @@ function syncRangeSlider(id: string, labelId: string, fmt?: (v: number) => strin
 // fraction — and thus the on-screen preview size — stays "as it is".
 const EXPORT_PX_FIELDS = ["shadowBlur", "textOutlineWidth", "cornerRadius", "meshBlur"] as const;
 
-function applyResolution(w: number, h: number, label?: string): void {
-  const k = w / editor.getExportSize().w;
-  const kh = h / editor.getExportSize().h;
-  if (k !== 1 || kh !== 1) {
-    state.fontSize *= k;
-    for (const f of EXPORT_PX_FIELDS) (state as unknown as Record<string, number>)[f] *= k;
-    if (state.letterSpacingUnit === "px") state.letterSpacing *= kh;
-    if (state.posXUnit === "px") state.posX *= k;
-    if (state.posYUnit === "px") state.posY *= kh;
-  }
+function commitResolution(w: number, h: number, label?: string): void {
+  state.exportW = w;
+  state.exportH = h;
   $("exportW").textContent = String(w);
   $("exportH").textContent = String(h);
   const g = gcd(w, h) || 1;
@@ -480,6 +473,19 @@ function applyResolution(w: number, h: number, label?: string): void {
   for (const f of EXPORT_PX_FIELDS) {
     syncRangeSlider(f, `${f}Val`, f === "meshBlur" ? (v) => `${v}px` : undefined);
   }
+}
+
+function applyResolution(w: number, h: number, label?: string): void {
+  const k = w / editor.getExportSize().w;
+  const kh = h / editor.getExportSize().h;
+  if (k !== 1 || kh !== 1) {
+    state.fontSize *= k;
+    for (const f of EXPORT_PX_FIELDS) (state as unknown as Record<string, number>)[f] *= k;
+    if (state.letterSpacingUnit === "px") state.letterSpacing *= kh;
+    if (state.posXUnit === "px") state.posX *= k;
+    if (state.posYUnit === "px") state.posY *= kh;
+  }
+  commitResolution(w, h, label);
   pushHistory();
   editor.scheduleDraw();
 }
@@ -502,7 +508,7 @@ resLock.addEventListener("change", () => {
   if (resLock.checked) lockRatio = (Number(resW.value) || 1) / (Number(resH.value) || 1);
 });
 
-function commitResolution(edited: "w" | "h"): void {
+function onResolutionChange(edited: "w" | "h"): void {
   let w = clampRes(Number(resW.value));
   let h = clampRes(Number(resH.value));
   if (resLock.checked) {
@@ -513,8 +519,8 @@ function commitResolution(edited: "w" | "h"): void {
   applyResolution(w, h);
 }
 
-resW.addEventListener("change", () => commitResolution("w"));
-resH.addEventListener("change", () => commitResolution("h"));
+resW.addEventListener("change", () => onResolutionChange("w"));
+resH.addEventListener("change", () => onResolutionChange("h"));
 
 // Zoom controls
 const wrap = $("canvasWrap");
@@ -643,6 +649,7 @@ function renderPresets(): void {
       if (ev.target === menuBtn) return;
       closeMenu();
       Object.assign(state, structuredClone(p.apply));
+      commitResolution(state.exportW, state.exportH);
       syncInputsFromState();
       state.activePreset = p.id;
       pushHistory();
@@ -714,6 +721,7 @@ void initSync();
 $("reset").addEventListener("click", () => {
   Object.assign(state, createDefaultState());
   state.activePreset = null;
+  commitResolution(state.exportW, state.exportH);
   syncInputsFromState();
   pushHistory();
   editor.scheduleDraw();
