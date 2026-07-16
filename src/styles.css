@@ -294,6 +294,16 @@ label.inline.wrap, .inline.wrap { flex-wrap: wrap; align-items: center; }
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.btn-icon:hover { color: var(--text); }
 
 /* Checkboxes */
 input[type=checkbox] {

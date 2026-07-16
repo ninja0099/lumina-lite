@@ -1481,8 +1481,10 @@ function runExportMp4(): void {
   const status = $("exportStatus");
   const fpsRaw = parseInt(($("mp4Fps") as HTMLInputElement).value, 10);
   const fps = Number.isFinite(fpsRaw) && fpsRaw > 0 ? Math.min(60, Math.max(1, fpsRaw)) : 25;
-  const bitrateRaw = parseInt(($("mp4Bitrate") as HTMLInputElement).value, 10);
-  const bitrateMbps = Number.isFinite(bitrateRaw) && bitrateRaw > 0 ? Math.min(40, Math.max(1, bitrateRaw)) : 8;
+  const valRaw = parseInt(($("mp4Bitrate") as HTMLInputElement).value, 10);
+  const val = mp4UseCrf
+    ? (Number.isFinite(valRaw) ? Math.min(51, Math.max(0, valRaw)) : 18)
+    : (Number.isFinite(valRaw) && valRaw > 0 ? Math.min(40, Math.max(1, valRaw)) : 8);
   const outFileName = `${getExportFilename()}.mp4`;
   btn.disabled = true;
   status.textContent = "Exporting…";
@@ -1490,7 +1492,7 @@ function runExportMp4(): void {
     status.textContent = `${phase} ${done}/${total}`;
   };
   editor
-    .exportAnimation(fps, bitrateMbps, outFileName, onProgress)
+    .exportAnimation(fps, val, mp4UseCrf, outFileName, onProgress)
     .then(() => (status.textContent = "Done — file downloaded."))
     .catch((err) => {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1503,6 +1505,26 @@ function runExportMp4(): void {
 }
 
 $("exportMp4").addEventListener("click", () => runExportMp4());
+
+// CRF / bitrate mode toggle
+let mp4UseCrf = true;
+const mp4ModeLabel = $("mp4ModeLabel");
+const mp4ModeToggle = $("mp4ModeToggle");
+const mp4BitrateInput = $("mp4Bitrate") as HTMLInputElement;
+mp4ModeToggle.addEventListener("click", () => {
+  mp4UseCrf = !mp4UseCrf;
+  if (mp4UseCrf) {
+    mp4ModeLabel.textContent = "CRF";
+    mp4BitrateInput.min = "0";
+    mp4BitrateInput.max = "51";
+    mp4BitrateInput.value = "18";
+  } else {
+    mp4ModeLabel.textContent = "Mbps";
+    mp4BitrateInput.min = "1";
+    mp4BitrateInput.max = "40";
+    mp4BitrateInput.value = "8";
+  }
+});
 
 
 // Collapsible groups (collapsed by default). Heading is keyboard-operable.
