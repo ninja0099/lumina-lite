@@ -111,6 +111,7 @@ export interface DesignState {
   bgGlitch: number;
   bgFilmGrain: number;
   bgHalftone: boolean;
+  bgHalftoneRGB: boolean;
   bgVignette: number;
   bgPixelate: boolean;
   bgBloom: number;
@@ -240,6 +241,7 @@ export function createDefaultState(): DesignState {
     bgGlitch: 0,
     bgFilmGrain: 0,
     bgHalftone: false,
+    bgHalftoneRGB: false,
     bgVignette: 0,
     bgPixelate: false,
     bgBloom: 0,

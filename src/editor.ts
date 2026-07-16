@@ -319,6 +319,7 @@ function paintBg(ctx: CanvasRenderingContext2D, w: number, h: number, s: DesignS
     s.bgFilmGrain > 0 ||
     s.bgBloom > 0 ||
     s.bgHalftone ||
+    s.bgHalftoneRGB ||
     s.bgPixelate ||
     s.duotoneIntensity > 0;
 

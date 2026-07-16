@@ -53,6 +53,7 @@ export function applyBackgroundEffects(
     s.bgFilmGrain > 0 ||
     s.bgBloom > 0 ||
     s.bgHalftone ||
+    s.bgHalftoneRGB ||
     s.bgPixelate ||
     s.duotoneIntensity > 0;
 
@@ -66,6 +67,7 @@ export function applyBackgroundEffects(
   if (s.bgFilmGrain > 0) filmGrain(img, s.bgFilmGrain);
   if (s.bgBloom > 0) bloom(img, w, h, s.bgBloom);
   if (s.bgHalftone) halftone(img, w, h);
+  if (s.bgHalftoneRGB) halftoneRGB(img, w, h);
   if (s.bgPixelate) pixelate(img, w, h);
   if (s.bgBlur > 0) boxBlur(img, w, h, s.bgBlur);
   if (s.duotoneIntensity > 0) duotone(img, s.bgDuotone, s.duotoneColorA, s.duotoneColorB, s.duotoneIntensity);
@@ -205,16 +207,20 @@ function glitch(img: ImageData, w: number, h: number, amount: number): void {
       }
     }
   }
+  // RGB split: red sampled ahead by `off`, blue sampled behind by `off`.
   if (intensity > 0.05) {
     const off = Math.round(intensity * 8);
-    for (let i = 0; i < d.length; i += 4) {
-      const x = (i / 4) % w;
-      if (x >= w - off) continue;
-      const si = i + off * 4;
-      if (si >= d.length) continue;
-      // RGB split: shift red right, blue left
-      d[i] = src[si];                    // red from shifted position
-      d[i + 2] = src[Math.max(0, i - off * 4) + 2]; // blue from opposite shift
+    for (let y = 0; y < h; y++) {
+      const rowStart = y * w * 4;
+      for (let x = 0; x < w; x++) {
+        const i = rowStart + x * 4;
+        const xR = Math.min(w - 1, x + off);
+        const xB = Math.max(0, x - off);
+        d[i]     = src[rowStart + xR * 4];      // red sampled to the right
+        d[i + 1] = src[i + 1];                  // green stays put
+        d[i + 2] = src[rowStart + xB * 4 + 2];  // blue sampled to the left
+        d[i + 3] = src[i + 3];
+      }
     }
   }
   releaseBuffer(src, w, h);
@@ -233,54 +239,233 @@ function filmGrain(img: ImageData, amount: number): void {
 
 function bloom(img: ImageData, w: number, h: number, amount: number): void {
   const d = img.data;
-  const a = amount / 100;
-  const out = getBuffer(w, h);
-  const r = Math.max(1, Math.round(3 * (w / 1920))); // Scale radius with width
-  const threshold = 160; // Could be made configurable
+  const threshold = 160;
+  const r = Math.max(1, Math.round(4 * (w / 1920)));
+  // Highlights: pixels above threshold scaled by themselves; below → 0.
+  const hi = getBuffer(w, h);
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    const k = lum > threshold ? 1 : 0;
+    hi[i] = d[i] * k; hi[i + 1] = d[i + 1] * k; hi[i + 2] = d[i + 2] * k;
+    hi[i + 3] = d[i + 3];
+  }
+  // Separable H+V box blur of the highlight layer.
+  const tmp = getBuffer(w, h);
+  const blurred = getBuffer(w, h);
+  // Horizontal pass: hi → tmp
   for (let y = 0; y < h; y++) {
+    let rSum = 0, gSum = 0, bSum = 0;
+    for (let i = -r; i <= r; i++) {
+      const xi = Math.max(0, Math.min(w - 1, i));
+      const p = (y * w + xi) * 4;
+      rSum += hi[p]; gSum += hi[p + 1]; bSum += hi[p + 2];
+    }
     for (let x = 0; x < w; x++) {
-      let rr = 0, gg = 0, bb = 0, cnt = 0;
-      for (let dy = -r; dy <= r; dy++) {
-        for (let dx = -r; dx <= r; dx++) {
-          const sx = Math.max(0, Math.min(w - 1, x + dx));
-          const sy = Math.max(0, Math.min(h - 1, y + dy));
-          const p = (sy * w + sx) * 4;
-          const lum = (0.299 * d[p] + 0.587 * d[p + 1] + 0.114 * d[p + 2]); // Perceptual luminance
-          if (lum > threshold) {
-            rr += d[p]; gg += d[p + 1]; bb += d[p + 2]; cnt++;
-          }
-        }
-      }
-      if (cnt > 0) {
-        const i = (y * w + x) * 4;
-        out[i] = Math.min(255, d[i] + (rr / cnt) * a);
-        out[i + 1] = Math.min(255, d[i + 1] + (gg / cnt) * a);
-        out[i + 2] = Math.min(255, d[i + 2] + (bb / cnt) * a);
-      } else {
-        const i = (y * w + x) * 4;
-        out[i] = d[i]; out[i + 1] = d[i + 1]; out[i + 2] = d[i + 2];
-      }
+      const p = (y * w + x) * 4;
+      const count = Math.min(w, x + r + 1) - Math.max(0, x - r);
+      tmp[p] = rSum / count; tmp[p + 1] = gSum / count; tmp[p + 2] = bSum / count; tmp[p + 3] = hi[p + 3];
+      const rm = Math.max(0, Math.min(w - 1, x - r));
+      const ad = Math.max(0, Math.min(w - 1, x + r + 1));
+      const rmp = (y * w + rm) * 4, adp = (y * w + ad) * 4;
+      rSum += hi[adp] - hi[rmp];
+      gSum += hi[adp + 1] - hi[rmp + 1];
+      bSum += hi[adp + 2] - hi[rmp + 2];
     }
   }
-  for (let i = 0; i < d.length; i += 4) {
-    d[i] = out[i]; d[i + 1] = out[i + 1]; d[i + 2] = out[i + 2];
+  // Vertical pass: tmp → blurred
+  for (let x = 0; x < w; x++) {
+    let rSum = 0, gSum = 0, bSum = 0;
+    for (let i = -r; i <= r; i++) {
+      const yi = Math.max(0, Math.min(h - 1, i));
+      const p = (yi * w + x) * 4;
+      rSum += tmp[p]; gSum += tmp[p + 1]; bSum += tmp[p + 2];
+    }
+    for (let y = 0; y < h; y++) {
+      const p = (y * w + x) * 4;
+      const count = Math.min(h, y + r + 1) - Math.max(0, y - r);
+      blurred[p] = rSum / count; blurred[p + 1] = gSum / count; blurred[p + 2] = bSum / count; blurred[p + 3] = tmp[p + 3];
+      const rm = Math.max(0, Math.min(h - 1, y - r));
+      const ad = Math.max(0, Math.min(h - 1, y + r + 1));
+      const rmp = (rm * w + x) * 4, adp = (ad * w + x) * 4;
+      rSum += tmp[adp] - tmp[rmp];
+      gSum += tmp[adp + 1] - tmp[rmp + 1];
+      bSum += tmp[adp + 2] - tmp[rmp + 2];
+    }
   }
-  releaseBuffer(out, w, h);
+  // Additive composite of blurred highlights onto the original.
+  const a = amount / 100;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]     = Math.min(255, Math.round(d[i] + blurred[i] * a));
+    d[i + 1] = Math.min(255, Math.round(d[i + 1] + blurred[i + 1] * a));
+    d[i + 2] = Math.min(255, Math.round(d[i + 2] + blurred[i + 2] * a));
+  }
+  releaseBuffer(hi, w, h);
+  releaseBuffer(tmp, w, h);
+  releaseBuffer(blurred, w, h);
 }
 
 function halftone(img: ImageData, w: number, h: number): void {
   const d = img.data;
-  const step = Math.max(6, Math.floor(w / 80));
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const gx = Math.floor(x / step) * step;
-      const gy = Math.floor(y / step) * step;
-      if (gx >= w || gy >= h) continue;
-      const src = (gy * w + gx) * 4;
-      const dst = (y * w + x) * 4;
-      d[dst] = d[src]; d[dst + 1] = d[src + 1]; d[dst + 2] = d[src + 2];
+  // Professional halftone screens: 45° rotated grid (avoids the "cheap
+  // pixelated dots" look of a straight axis-aligned grid — the single
+  // biggest visual tell versus real print halftone), cell-averaged sampling
+  // (smooths out single-pixel noise/edges instead of one corner sample per
+  // cell), and smoothstep-based anti-aliasing on the dot edge.
+  const step = Math.max(5, Math.floor(w / 90));
+  const half = step >> 1;
+  const maxR = half * 0.55;
+  const angle = Math.PI / 4; // 45°, the classic print screen angle
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const diag = Math.sqrt(w * w + h * h);
+  const gHalf = diag / 2;
+  const sub = 3; // 3x3 sub-sample average per cell
+  const subStep = step / sub;
+
+  const src = getBuffer(w, h);
+  src.set(d);
+  for (let i = 0; i < d.length; i += 4) {
+    d[i] = 255; d[i + 1] = 255; d[i + 2] = 255; d[i + 3] = 255;
+  }
+
+  for (let gy = -gHalf; gy <= gHalf; gy += step) {
+    for (let gx = -gHalf; gx <= gHalf; gx += step) {
+      // Rotate the cell center from grid-local space into canvas space.
+      const cx = Math.round(gx * cos - gy * sin + w / 2);
+      const cy = Math.round(gx * sin + gy * cos + h / 2);
+      if (cx < 0 || cx >= w || cy < 0 || cy >= h) continue;
+
+      // Average a 3x3 sub-sample grid (still in rotated-local space, each
+      // point rotated individually) instead of one corner pixel — smooths
+      // out noise and single-pixel spikes for a cleaner luminance read.
+      let sr = 0, sg = 0, sb = 0, cnt = 0;
+      for (let sy = 0; sy < sub; sy++) {
+        for (let sx = 0; sx < sub; sx++) {
+          const lx = gx - half + subStep * (sx + 0.5);
+          const ly = gy - half + subStep * (sy + 0.5);
+          const px = Math.round(lx * cos - ly * sin + w / 2);
+          const py = Math.round(lx * sin + ly * cos + h / 2);
+          if (px >= 0 && px < w && py >= 0 && py < h) {
+            const pi = (py * w + px) * 4;
+            sr += src[pi]; sg += src[pi + 1]; sb += src[pi + 2]; cnt++;
+          }
+        }
+      }
+      if (cnt === 0) continue;
+      sr /= cnt; sg /= cnt; sb /= cnt;
+
+      const lum = (0.299 * sr + 0.587 * sg + 0.114 * sb) / 255;
+      const r = Math.round(maxR * Math.sqrt(1 - lum));
+      if (r < 1) continue;
+      const rSq = r * r;
+      const x1 = Math.min(w, cx + r + 1), x0 = Math.max(0, cx - r);
+      const y1 = Math.min(h, cy + r + 1), y0 = Math.max(0, cy - r);
+      // Pure grayscale ink — no hue carried over, just black-ish dots on white.
+      const gray = Math.round(lum * 255);
+      const innerSq = (r - 1) * (r - 1);
+      for (let y = y0; y < y1; y++) {
+        const dy = y - cy, dySq = dy * dy;
+        for (let x = x0; x < x1; x++) {
+          const distSq = (x - cx) * (x - cx) + dySq;
+          if (distSq > rSq) continue;
+          const di = (y * w + x) * 4;
+          // Smoothstep edge fade — rounder, less notchy than a linear ramp.
+          if (distSq >= innerSq) {
+            const edge = Math.max(0, Math.min(1, r - Math.sqrt(distSq)));
+            const t = edge * edge * (3 - 2 * edge);
+            d[di]     = Math.round(d[di]     * (1 - t) + gray * t);
+            d[di + 1] = Math.round(d[di + 1] * (1 - t) + gray * t);
+            d[di + 2] = Math.round(d[di + 2] * (1 - t) + gray * t);
+          } else {
+            d[di] = gray; d[di + 1] = gray; d[di + 2] = gray;
+          }
+        }
+      }
     }
   }
+  releaseBuffer(src, w, h);
+}
+
+function halftoneRGB(img: ImageData, w: number, h: number): void {
+  const d = img.data;
+  // Same rotated-grid + averaged-sampling upgrade as halftone(); only the
+  // ink stays different (full-saturation color instead of gray).
+  const step = Math.max(5, Math.floor(w / 90));
+  const half = step >> 1;
+  const maxR = half * 0.65;
+  const angle = Math.PI / 4;
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const diag = Math.sqrt(w * w + h * h);
+  const gHalf = diag / 2;
+  const sub = 3;
+  const subStep = step / sub;
+
+  // Snapshot source colors, then flatten to a white paper background —
+  // dots are drawn fresh on top, no pixelated fill left behind.
+  const src = getBuffer(w, h);
+  src.set(d);
+  const pix = getBuffer(w, h);
+  for (let i = 0; i < d.length; i += 4) {
+    pix[i] = 255; pix[i + 1] = 255; pix[i + 2] = 255; pix[i + 3] = 255;
+  }
+
+  for (let gy = -gHalf; gy <= gHalf; gy += step) {
+    for (let gx = -gHalf; gx <= gHalf; gx += step) {
+      const cx = Math.round(gx * cos - gy * sin + w / 2);
+      const cy = Math.round(gx * sin + gy * cos + h / 2);
+      if (cx < 0 || cx >= w || cy < 0 || cy >= h) continue;
+
+      let sr = 0, sg = 0, sb = 0, cnt = 0;
+      for (let sy = 0; sy < sub; sy++) {
+        for (let sx = 0; sx < sub; sx++) {
+          const lx = gx - half + subStep * (sx + 0.5);
+          const ly = gy - half + subStep * (sy + 0.5);
+          const px = Math.round(lx * cos - ly * sin + w / 2);
+          const py = Math.round(lx * sin + ly * cos + h / 2);
+          if (px >= 0 && px < w && py >= 0 && py < h) {
+            const pi = (py * w + px) * 4;
+            sr += src[pi]; sg += src[pi + 1]; sb += src[pi + 2]; cnt++;
+          }
+        }
+      }
+      if (cnt === 0) continue;
+      sr /= cnt; sg /= cnt; sb /= cnt;
+
+      const lum = (0.299 * sr + 0.587 * sg + 0.114 * sb) / 255;
+      const r = Math.round(maxR * Math.sqrt(1 - lum));
+      if (r < 1) continue;
+      const rSq = r * r;
+      const x1 = Math.min(w, cx + r + 1), x0 = Math.max(0, cx - r);
+      const y1 = Math.min(h, cy + r + 1), y0 = Math.max(0, cy - r);
+      // Full-saturation ink — real color halftone (CMYK) never dims the ink
+      // itself; tone comes entirely from dot size/coverage, so dimming the
+      // color on top just makes it muddy without adding real contrast.
+      const dr = sr;
+      const dg = sg;
+      const db = sb;
+      const innerSq = (r - 1) * (r - 1);
+      for (let y = y0; y < y1; y++) {
+        const dy = y - cy, dySq = dy * dy;
+        for (let x = x0; x < x1; x++) {
+          const dx = x - cx;
+          const distSq = dx * dx + dySq;
+          if (distSq > rSq) continue;
+          const di = (y * w + x) * 4;
+          if (distSq >= innerSq) {
+            const edge = Math.max(0, Math.min(1, r - Math.sqrt(distSq)));
+            const t = edge * edge * (3 - 2 * edge);
+            pix[di]     = Math.round(pix[di]     * (1 - t) + dr * t);
+            pix[di + 1] = Math.round(pix[di + 1] * (1 - t) + dg * t);
+            pix[di + 2] = Math.round(pix[di + 2] * (1 - t) + db * t);
+          } else {
+            pix[di] = dr; pix[di + 1] = dg; pix[di + 2] = db;
+          }
+        }
+      }
+    }
+  }
+  for (let i = 0; i < d.length; i++) d[i] = pix[i];
+  releaseBuffer(src, w, h);
+  releaseBuffer(pix, w, h);
 }
 
 function pixelate(img: ImageData, w: number, h: number): void {

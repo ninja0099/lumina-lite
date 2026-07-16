@@ -87,6 +87,7 @@ const binders: Binder[] = [
   { id: "bgGlitch", apply: (s, v) => (s.bgGlitch = Number(v)) },
   { id: "bgFilmGrain", apply: (s, v) => (s.bgFilmGrain = Number(v)) },
   { id: "bgHalftone", apply: (s, v) => (s.bgHalftone = Boolean(v)) },
+  { id: "bgHalftoneRGB", apply: (s, v) => (s.bgHalftoneRGB = Boolean(v)) },
   { id: "bgVignette", apply: (s, v) => (s.bgVignette = Number(v)) },
   { id: "bgPixelate", apply: (s, v) => (s.bgPixelate = Boolean(v)) },
   { id: "bgBloom", apply: (s, v) => (s.bgBloom = Number(v)) },
