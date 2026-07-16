@@ -654,49 +654,89 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
 
   async function exportAnimation(
     fps = 25,
-    value = 18,
-    useCrf = true,
+    bitrateMbps = 8,
     outFileName = "lumina-lite.mp4",
     onProgress?: (done: number, total: number, phase: string) => void,
   ): Promise<void> {
     // Stop live render loop to prevent animationPhase race with export.
     if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    let encoder: VideoEncoder | null = null;
+    let muxer: any = null;
     try {
       const s = getState();
       const dur = s.meshAnimDuration;
-      const totalFrames = Math.max(4, Math.round(fps * dur));
-      if (onProgress) onProgress(0, totalFrames, "Loading ffmpeg");
+      const frames = Math.max(4, Math.round(fps * dur));
+      if (onProgress) onProgress(0, frames, "Rendering frames");
 
-      const { encodeMP4 } = await import("./ffmpeg-export");
-
-      if (onProgress) onProgress(0, totalFrames, "Rendering frames");
+      // MP4 via WebCodecs
+      if (typeof VideoEncoder === "undefined") {
+        throw new Error("MP4 export requires a browser with WebCodecs (recent Chrome/Edge/Safari).");
+      }
+      const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
+      muxer = new Muxer({
+        target: new ArrayBufferTarget(),
+        video: { codec: "avc", width: exportW, height: exportH, frameRate: fps },
+        fastStart: "in-memory",
+      });
+      encoder = new VideoEncoder({
+        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+        error: (e) => { throw new Error("VideoEncoder error: " + (e instanceof Error ? e.message : String(e))); },
+      });
+      encoder.configure({
+        codec: "avc1.640033",
+        width: exportW,
+        height: exportH,
+        bitrate: bitrateMbps * 1_000_000,
+        framerate: fps,
+      });
+      // Reuse one canvas across all frames — allocation-free render loop.
       const renderCanvas = document.createElement("canvas");
       renderCanvas.width = exportW;
       renderCanvas.height = exportH;
-      const blobs: Blob[] = [];
-      for (let i = 0; i < totalFrames; i++) {
-        paintFrame(i / totalFrames, renderCanvas);
-        blobs.push(
-          await new Promise<Blob>((resolve) =>
-            renderCanvas.toBlob(
-              (b) => resolve(b!),
-              "image/png",
-            ),
-          ),
-        );
-        if (onProgress) onProgress(i + 1, totalFrames, "Rendering frames");
+      // Yield via a MessageChannel — gives the browser a real macrotask to flush
+      // pending DOM/UI work without paying rAF's 16ms floor. This is what makes
+      // the "Encoding X/Y" counter update per frame instead of in batches.
+      const nextTick = () =>
+        new Promise<void>((resolve) => {
+          const ch = new MessageChannel();
+          ch.port1.onmessage = () => resolve();
+          ch.port2.postMessage(0);
+        });
+      for (let i = 0; i < frames; i++) {
+        paintFrame(i / frames, renderCanvas);
+        const frame = new VideoFrame(renderCanvas, {
+          timestamp: (i * 1_000_000) / fps,
+          duration: 1_000_000 / fps,
+        });
+        try {
+          encoder.encode(frame, { keyFrame: i % fps === 0 });
+        } finally {
+          frame.close();
+        }
+        if (onProgress) onProgress(i + 1, frames, "Encoding");
+        // Yield after every frame so the status text paints per-frame.
+        // MessageChannel is a real macrotask that flushes pending UI work
+        // without paying rAF's 16ms floor. Doubles as backpressure — the
+        // encoder catches up before we submit the next frame.
+        await nextTick();
       }
-
-      if (onProgress) onProgress(0, totalFrames, "Encoding MP4");
-      const blob = await encodeMP4(blobs, fps, value, useCrf, (done) => {
-        if (onProgress) onProgress(done, totalFrames, "Encoding MP4");
-      });
-      downloadBlob(blob, outFileName);
+      await encoder.flush();
+      muxer.finalize();
+      const { buffer } = muxer.target;
+      downloadBlob(new Blob([buffer], { type: "video/mp4" }), outFileName);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       alert("Export failed: " + msg);
       throw err;
     } finally {
+      // Clean up encoder/muxer on error to prevent resource leaks
+      if (encoder) {
+        try { encoder.close(); } catch {}
+      }
+      if (muxer) {
+        try { muxer.finalize(); } catch {}
+      }
+      // Restart live render loop (was cancelled at export start).
       scheduleDraw();
     }
   }

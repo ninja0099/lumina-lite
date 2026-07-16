@@ -13,8 +13,6 @@
     "vite": "^5.4.2"
   },
   "dependencies": {
-    "@ffmpeg/ffmpeg": "^0.12.15",
-    "@ffmpeg/util": "^0.12.2",
     "mp4-muxer": "^5.2.2"
   }
 }
