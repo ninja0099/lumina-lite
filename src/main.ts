@@ -1496,7 +1496,7 @@ function runExportMp4(): void {
   const fpsRaw = parseInt(($("mp4Fps") as HTMLInputElement).value, 10);
   const fps = Number.isFinite(fpsRaw) && fpsRaw > 0 ? Math.min(60, Math.max(1, fpsRaw)) : 25;
   const bitrateRaw = parseInt(($("mp4Bitrate") as HTMLInputElement).value, 10);
-  const bitrateMbps = Number.isFinite(bitrateRaw) && bitrateRaw > 0 ? Math.min(40, Math.max(1, bitrateRaw)) : 8;
+  const bitrateMbps = Number.isFinite(bitrateRaw) && bitrateRaw > 0 ? Math.min(40, Math.max(1, bitrateRaw)) : 12;
   const outFileName = `${getExportFilename()}.mp4`;
   btn.disabled = true;
   status.textContent = "Exporting…";
@@ -1524,7 +1524,7 @@ function runExportWebM(): void {
   const fpsRaw = parseInt(($("mp4Fps") as HTMLInputElement).value, 10);
   const fps = Number.isFinite(fpsRaw) && fpsRaw > 0 ? Math.min(60, Math.max(1, fpsRaw)) : 25;
   const bitrateRaw = parseInt(($("mp4Bitrate") as HTMLInputElement).value, 10);
-  const bitrateMbps = Number.isFinite(bitrateRaw) && bitrateRaw > 0 ? Math.min(40, Math.max(1, bitrateRaw)) : 8;
+  const bitrateMbps = Number.isFinite(bitrateRaw) && bitrateRaw > 0 ? Math.min(40, Math.max(1, bitrateRaw)) : 12;
   const outFileName = `${getExportFilename()}.webm`;
   btn.disabled = true;
   status.textContent = "Exporting (VP9 10-bit)…";

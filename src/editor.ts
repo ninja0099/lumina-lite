@@ -655,7 +655,7 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
 
   async function exportAnimation(
     fps = 25,
-    bitrateMbps = 8,
+    bitrateMbps = 12,
     outFileName = "lumina-lite.mp4",
     onProgress?: (done: number, total: number, phase: string) => void,
   ): Promise<void> {
@@ -708,7 +708,7 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
 
   async function exportAnimationWebM(
     fps = 25,
-    bitrateMbps = 8,
+    bitrateMbps = 12,
     outFileName = "lumina-lite.webm",
     onProgress?: (done: number, total: number, phase: string) => void,
   ): Promise<void> {
