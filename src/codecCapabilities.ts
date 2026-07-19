@@ -14,7 +14,7 @@
 // hundred milliseconds of one-time work, not something to re-run per export.
 
 export const VP9_CODEC_8BIT = "vp09.00.10.08";
-export const VP9_CODEC_10BIT = "vp09.02.10.10.01.09.16.09.01";
+export const VP9_CODEC_10BIT = "vp09.02.30.10.01.09.01.09.01";
 
 export interface Vp9CapabilityResult {
   supported: boolean;
