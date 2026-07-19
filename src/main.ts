@@ -19,6 +19,7 @@ import { setSyncListeners, initSync, type SyncStatus } from "./sync";
 import { createEditor, setBgImage, getSelectedNode, setSelectedNode, nodeAt } from "./editor";
 import { oklchToHex, parseHex } from "./color";
 import Coloris from "./vendor/coloris/coloris";
+import { checkVp9TenBitSupport } from "./codecCapabilities";
 
 const state = createDefaultState();
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
@@ -732,6 +733,19 @@ function renderSyncStatus(s: SyncStatus, msg: string): void {
 setSyncListeners(renderPresets, renderSyncStatus);
 
 void initSync();
+
+// Reveal 10-bit VP9/WebM export only after confirming the browser's encoder
+// actually honors the bit depth (not just isConfigSupported()=true — see
+// codecCapabilities.ts for why that alone isn't trustworthy).
+checkVp9TenBitSupport().then((result) => {
+  const btn = $<HTMLButtonElement>("exportWebm");
+  if (result.supported) {
+    btn.classList.remove("hidden");
+  } else {
+    // Leave hidden. Uncomment for debugging during development:
+    // console.info("10-bit VP9 unavailable:", result.reason);
+  }
+});
 
 // Reset
 $("reset").addEventListener("click", () => {
@@ -1504,6 +1518,32 @@ function runExportMp4(): void {
 
 $("exportMp4").addEventListener("click", () => runExportMp4());
 
+function runExportWebM(): void {
+  const btn = $("exportWebm") as HTMLButtonElement;
+  const status = $("exportStatus");
+  const fpsRaw = parseInt(($("mp4Fps") as HTMLInputElement).value, 10);
+  const fps = Number.isFinite(fpsRaw) && fpsRaw > 0 ? Math.min(60, Math.max(1, fpsRaw)) : 25;
+  const bitrateRaw = parseInt(($("mp4Bitrate") as HTMLInputElement).value, 10);
+  const bitrateMbps = Number.isFinite(bitrateRaw) && bitrateRaw > 0 ? Math.min(40, Math.max(1, bitrateRaw)) : 8;
+  const outFileName = `${getExportFilename()}.webm`;
+  btn.disabled = true;
+  status.textContent = "Exporting (VP9 10-bit)…";
+  const onProgress = (done: number, total: number, phase: string) => {
+    status.textContent = `${phase} ${done}/${total}`;
+  };
+  editor
+    .exportAnimationWebM(fps, bitrateMbps, outFileName, onProgress)
+    .then(() => (status.textContent = "Done — file downloaded."))
+    .catch((err) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      status.textContent = msg;
+    })
+    .finally(() => {
+      btn.disabled = false;
+    });
+}
+
+$("exportWebm").addEventListener("click", () => runExportWebM());
 
 // Collapsible groups (collapsed by default). Heading is keyboard-operable.
 document.querySelectorAll<HTMLElement>(".group-head").forEach((head) => {
