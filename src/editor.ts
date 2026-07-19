@@ -659,85 +659,49 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     outFileName = "lumina-lite.mp4",
     onProgress?: (done: number, total: number, phase: string) => void,
   ): Promise<void> {
-    // Stop live render loop to prevent animationPhase race with export.
     if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-    let encoder: VideoEncoder | null = null;
-    let muxer: any = null;
+    let output: any = null;
     try {
       const s = getState();
       const dur = s.meshAnimDuration;
       const frames = Math.max(4, Math.round(fps * dur));
       if (onProgress) onProgress(0, frames, "Rendering frames");
 
-      // MP4 via WebCodecs
-      if (typeof VideoEncoder === "undefined") {
-        throw new Error("MP4 export requires a browser with WebCodecs (recent Chrome/Edge/Safari).");
-      }
-      const { Muxer, ArrayBufferTarget } = await import("mp4-muxer");
-      muxer = new Muxer({
-        target: new ArrayBufferTarget(),
-        video: { codec: "avc", width: exportW, height: exportH, frameRate: fps },
-        fastStart: "in-memory",
+      const { Output, Mp4OutputFormat, BufferTarget, CanvasSource } = await import("mediabunny");
+
+      output = new Output({
+        format: new Mp4OutputFormat({ fastStart: "in-memory" }),
+        target: new BufferTarget(),
       });
-      encoder = new VideoEncoder({
-        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => { throw new Error("VideoEncoder error: " + (e instanceof Error ? e.message : String(e))); },
-      });
-      encoder.configure({
-        codec: "avc1.640033",
-        width: exportW,
-        height: exportH,
+
+      const canvas = document.createElement("canvas");
+      canvas.width = exportW;
+      canvas.height = exportH;
+
+      const source = new CanvasSource(canvas, {
+        codec: "avc",
+        fullCodecString: "avc1.640033",
         bitrate: bitrateMbps * 1_000_000,
-        framerate: fps,
+        bitrateMode: "variable",
       });
-      // Reuse one canvas across all frames — allocation-free render loop.
-      const renderCanvas = document.createElement("canvas");
-      renderCanvas.width = exportW;
-      renderCanvas.height = exportH;
-      // Yield via a MessageChannel — gives the browser a real macrotask to flush
-      // pending DOM/UI work without paying rAF's 16ms floor. This is what makes
-      // the "Encoding X/Y" counter update per frame instead of in batches.
-      const nextTick = () =>
-        new Promise<void>((resolve) => {
-          const ch = new MessageChannel();
-          ch.port1.onmessage = () => resolve();
-          ch.port2.postMessage(0);
-        });
+      output.addVideoTrack(source, { frameRate: fps });
+      await output.start();
+
       for (let i = 0; i < frames; i++) {
-        paintFrame(i / frames, renderCanvas);
-        const frame = new VideoFrame(renderCanvas, {
-          timestamp: (i * 1_000_000) / fps,
-          duration: 1_000_000 / fps,
-        });
-        try {
-          encoder.encode(frame, { keyFrame: i % fps === 0 });
-        } finally {
-          frame.close();
-        }
-        if (onProgress) onProgress(i + 1, frames, "Encoding");
-        // Yield after every frame so the status text paints per-frame.
-        // MessageChannel is a real macrotask that flushes pending UI work
-        // without paying rAF's 16ms floor. Doubles as backpressure — the
-        // encoder catches up before we submit the next frame.
-        await nextTick();
+        paintFrame(i / frames, canvas);
+        await source.add(i / fps, 1 / fps, { keyFrame: i % fps === 0 });
+        if (onProgress) onProgress(i + 1, frames, "Encoding (VBR)");
       }
-      await encoder.flush();
-      muxer.finalize();
-      const { buffer } = muxer.target;
-      downloadBlob(new Blob([buffer], { type: "video/mp4" }), outFileName);
+
+      source.close();
+      await output.finalize();
+      downloadBlob(new Blob([output.target.buffer!], { type: output.format.mimeType }), outFileName);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       alert("Export failed: " + msg);
       throw err;
     } finally {
-      // Clean up encoder/muxer on error to prevent resource leaks
-      if (encoder) {
-        try { encoder.close(); } catch {}
-      }
-      if (muxer) {
-        try { muxer.finalize(); } catch {}
-      }
-      // Restart live render loop (was cancelled at export start).
+      if (output) { try { await output.cancel(); } catch {} }
       scheduleDraw();
     }
   }
@@ -749,114 +713,48 @@ export function createEditor(canvas: HTMLCanvasElement, getState: () => DesignSt
     onProgress?: (done: number, total: number, phase: string) => void,
   ): Promise<void> {
     if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-    let encoder: VideoEncoder | null = null;
-    let muxer: any = null;
-    let finalized = false;
-
+    let output: any = null;
     try {
       const s = getState();
       const dur = s.meshAnimDuration;
       const frames = Math.max(4, Math.round(fps * dur));
       if (onProgress) onProgress(0, frames, "Rendering frames");
 
-      if (typeof VideoEncoder === "undefined") {
-        throw new Error("WebM export requires a browser with WebCodecs (recent Chrome/Edge).");
-      }
+      const { Output, WebMOutputFormat, BufferTarget, CanvasSource } = await import("mediabunny");
 
-      // Verify the codec config before committing to the export — this is a
-      // fast rejection if 10-bit VP9 isn't usable, independent of the app-level
-      // capability probe (which may be cached/stale).
-      const support = await VideoEncoder.isConfigSupported({
-        codec: VP9_CODEC_10BIT,
-        width: exportW,
-        height: exportH,
+      output = new Output({
+        format: new WebMOutputFormat(),
+        target: new BufferTarget(),
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = exportW;
+      canvas.height = exportH;
+
+      const source = new CanvasSource(canvas, {
+        codec: "vp9",
+        fullCodecString: VP9_CODEC_10BIT,
         bitrate: bitrateMbps * 1_000_000,
-        framerate: fps,
+        bitrateMode: "variable",
       });
-      if (!support.supported) {
-        throw new Error("10-bit VP9 is not supported by this browser/device for the requested resolution.");
-      }
-
-      const { Muxer, ArrayBufferTarget } = await import("webm-muxer");
-      muxer = new Muxer({
-        target: new ArrayBufferTarget(),
-        video: {
-          codec: "V_VP9",
-          width: exportW,
-          height: exportH,
-          frameRate: fps,
-        },
-      });
-
-      encoder = new VideoEncoder({
-        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => { throw new Error("VideoEncoder error: " + (e instanceof Error ? e.message : String(e))); },
-      });
-
-      encoder.configure({
-        codec: VP9_CODEC_10BIT,
-        width: exportW,
-        height: exportH,
-        bitrate: bitrateMbps * 1_000_000,
-        bitrateMode: "variable", // gradients/low-detail content benefits from VBR over CBR
-        framerate: fps,
-      });
-
-      const renderCanvas = document.createElement("canvas");
-      renderCanvas.width = exportW;
-      renderCanvas.height = exportH;
-
-      const nextTick = () =>
-        new Promise<void>((resolve) => {
-          const ch = new MessageChannel();
-          ch.port1.onmessage = () => resolve();
-          ch.port2.postMessage(0);
-        });
-
-      // Backpressure gate: VP9 software encode is markedly slower than H.264
-      // (libvpx benchmarks put it at roughly 16% of real-time x264 throughput
-      // at typical speed settings). Without this, encodeQueueSize can grow
-      // unbounded across the frame loop, holding many full-resolution decoded
-      // frames in memory simultaneously and risking a tab crash on longer or
-      // higher-resolution exports.
-      const MAX_QUEUE = 2;
+      output.addVideoTrack(source, { frameRate: fps });
+      await output.start();
 
       for (let i = 0; i < frames; i++) {
-        paintFrame(i / frames, renderCanvas);
-
-        while (encoder.encodeQueueSize > MAX_QUEUE) {
-          await nextTick();
-        }
-
-        const frame = new VideoFrame(renderCanvas, {
-          timestamp: (i * 1_000_000) / fps,
-          duration: 1_000_000 / fps,
-        });
-        try {
-          encoder.encode(frame, { keyFrame: i % fps === 0 });
-        } finally {
-          frame.close();
-        }
-        if (onProgress) onProgress(i + 1, frames, "Encoding (VP9 10-bit)");
-        await nextTick();
+        paintFrame(i / frames, canvas);
+        await source.add(i / fps, 1 / fps, { keyFrame: i % fps === 0 });
+        if (onProgress) onProgress(i + 1, frames, "Encoding (VP9 10-bit VBR)");
       }
 
-      await encoder.flush();
-      muxer.finalize();
-      finalized = true;
-      const { buffer } = muxer.target;
-      downloadBlob(new Blob([buffer], { type: "video/webm" }), outFileName);
+      source.close();
+      await output.finalize();
+      downloadBlob(new Blob([output.target.buffer!], { type: output.format.mimeType }), outFileName);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       alert("WebM export failed: " + msg);
       throw err;
     } finally {
-      if (encoder) {
-        try { encoder.close(); } catch {}
-      }
-      if (muxer && !finalized) {
-        try { muxer.finalize(); } catch {}
-      }
+      if (output) { try { await output.cancel(); } catch {} }
       scheduleDraw();
     }
   }
